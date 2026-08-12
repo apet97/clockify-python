@@ -1,9 +1,20 @@
 # Security
 
-- The SDK sends exactly one Clockify credential (`X-Api-Key` or `X-Addon-Token`),
-  attached only after the final destination host is validated. Redirects are never
-  followed.
-- Credentials never appear in `repr`, exceptions, logs, or MCP output.
-- The MCP server ships structurally read-only. Write tools are gated by the plan in
-  `docs/port/MCP_WRITE_SAFETY_PLAN.md` and are not registered by default.
-- Report vulnerabilities through a private GitHub security advisory on this repository.
+Do not open a public issue that contains a credential, private workspace data,
+or an unpatched vulnerability. After the owner creates a GitHub remote, report
+vulnerabilities through that repository's private security-advisory feature.
+
+Current guarantees:
+
+- The SDK sends exactly one `X-Api-Key` or `X-Addon-Token` value.
+- It validates the final destination before it attaches the credential.
+- It rejects caller-supplied `Host`, `:authority`, `X-Api-Key`, and
+  `X-Addon-Token` headers before network access.
+- It does not follow redirects.
+- It sanitizes and bounds upstream error data before it constructs public errors.
+- It never automatically retries a write.
+- The default MCP server registers zero writes.
+
+The dormant MCP write-safety code is not a public write capability. Do not
+enable it until every condition in `docs/port/MCP_WRITE_SAFETY_PLAN.md` passes,
+including independent review and approval-UI evidence from two intended hosts.

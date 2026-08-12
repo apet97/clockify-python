@@ -1,49 +1,38 @@
-# clockify-python — repository guide for Claude
+# Repository maintenance guide
 
-This repository implements the complete Clockify Python SDK + MCP described by three
-authoritative blueprints. Do not re-plan. Read them, then continue from
-`IMPLEMENTATION_STATUS.md` → "Next exact action".
+This repository implements `clockify-python-115`. Use current source and tests
+as executable evidence. Use the three plans in `docs/port/` for the intended
+contract:
 
-## Authoritative inputs (do not copy content out of them)
+- `MASTER_IMPLEMENTATION_PLAN.md`: architecture and release gates.
+- `OPERATION_PORT_MANIFEST.md`: all 168 operation records and public mappings.
+- `MCP_WRITE_SAFETY_PLAN.md`: mandatory write-safety conditions.
 
-- `docs/port/MASTER_IMPLEMENTATION_PLAN.md` — architecture, phases, gates, implementer contract.
-- `docs/port/OPERATION_PORT_MANIFEST.md` — all 168 endpoint records and public resource/method map.
-- `docs/port/MCP_WRITE_SAFETY_PLAN.md` — every MCP mutation-safety invariant and ship condition.
-- Evidence only (READ-ONLY, never modify): `../clockify-ts-sdk` at HEAD
-  `d7091a44a1b95d4918fa17a7f9b174bf668a9136`; corrected OpenAPI at
-  `../clockify-ts-sdk/spec/corrected/clockify.corrected.openapi.yaml`.
+The read-only evidence repository is `../clockify-ts-sdk` at commit
+`d7091a44a1b95d4918fa17a7f9b174bf668a9136`. Do not modify it.
 
-## Write boundary
+## Architecture map
 
-Create/edit/delete ONLY inside this directory (`2mcp`). OS temp dirs are fine for
-disposable wheel-install tests. Never touch `../clockify-ts-sdk` or anything else
-under `addons-me`. Never commit secrets (`.env` is gitignored).
+- Operation: `src/clockify/operations/<domain>.py`
+- Model: `src/clockify/models/<domain>.py`
+- Public SDK method: `src/clockify/resources/<domain>.py`
+- Request and response boundary: `src/clockify/_transport/`
+- MCP read tool: `src/clockify_mcp/tools/<domain>.py`
+- MCP workflow: `src/clockify_mcp/workflows/`
+- Dormant write safety: `src/clockify_mcp/writes/`
 
-## Non-negotiable architecture
+Add one explicit operation record, method, tool decision, and focused test.
+Do not add runtime method generation or generic CRUD machinery.
 
-- Distribution `clockify-python-115`; imports `clockify` + `clockify_mcp`; console `clockify-mcp`;
-  Python >= 3.11; hatchling; uv; MCP deps behind `[mcp]` extra.
-- Async-only `ClockifyClient`, one reused `httpx.AsyncClient`, exactly one credential
-  (`api_key` XOR `addon_token`), final-host validation before auth, redirects disabled.
-- Exactly 168 operations / 29 resources / 168 explicit public methods / 62 reads (49 GET +
-  13 POST) / 106 writes / 339 reachable model roots / 60 raw MCP read tools / 5 workflows.
-- Static hand-authored operation records in 29 domain modules; static committed Pydantic v2
-  models; no runtime generation, no `__getattr__`, no import-time registration side effects.
-- Every MCP read path goes through the final-boundary `ReadOnlyExecutor`.
-- No write auto-retry ever. MCP writes ship only per the safety plan; default server stays
-  structurally read-only.
+## Read-only boundary
 
-## Startup/resume ritual (every fresh session)
+The default server must expose exactly 60 raw reads and five workflows. It must
+register zero writes and import no write module. Every MCP read path must use
+`ReadOnlyExecutor`. Tool annotations are not enforcement.
 
-1. `pwd -P`; confirm project and `../clockify-ts-sdk` paths.
-2. Read this file, then `IMPLEMENTATION_STATUS.md`.
-3. Read the master-plan section for the current phase.
-4. `git status --short` and `git log --oneline -5`.
-5. Verify sibling repo unchanged: `git -C ../clockify-ts-sdk status --short` (must be clean)
-   and HEAD still `d7091a4`.
-6. Run the narrowest green gate for the current checkpoint
-   (`uv run pytest -q -m "not live"` when in doubt).
-7. Continue from "Next exact action". Do not redesign completed architecture.
+Do not register a write until every condition in `MCP_WRITE_SAFETY_PLAN.md`
+passes, including independent review and approval-UI evidence in two intended
+hosts.
 
 ## Gates
 
@@ -56,6 +45,13 @@ uv run pytest -q -m "not live"
 uv build
 ```
 
-Live suite (sacrificial workspace, separate): `uv run pytest -q -m live`.
-Live rules: unique run prefix, create-then-clean own artifacts only, zero residue,
-never print credentials.
+CI and release checks must clone the evidence repository at the pinned commit.
+They must not set `CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE`.
+
+## Hard stops
+
+Stop and gather evidence if a route, schema, money unit, replacement rule, or
+write outcome is uncertain. Never retry a write automatically. Never expose an
+arbitrary URL or method. Never put a credential in source, logs, errors, tests,
+or artifacts. Do not push, tag, publish, or change a remote unless the owner
+explicitly asks.

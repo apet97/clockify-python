@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "clockify": {
+      "command": "/absolute/path/to/clockify-mcp",
+      "env": {
+        "CLOCKIFY_API_KEY": "supply-with-your-host-secret-store",
+        "CLOCKIFY_WORKSPACE_ID": "sacrificial-or-read-workspace-id"
+      }
+    }
+  }
+}
