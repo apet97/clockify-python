@@ -101,10 +101,13 @@ async def test_missing_credentials_fail_without_leaking(monkeypatch: pytest.Monk
 
 
 async def test_no_write_module_is_imported_by_the_read_server() -> None:
+    """Checked in a fresh interpreter: the test session itself imports writes tests."""
+    import subprocess
     import sys
 
-    import clockify_mcp.server
-    import clockify_mcp.tools  # noqa: F401
-
-    write_modules = [name for name in sys.modules if name.startswith("clockify_mcp.writes")]
-    assert write_modules == []
+    code = (
+        "import sys; import clockify_mcp.server, clockify_mcp.tools; "
+        "bad = [m for m in sys.modules if m.startswith('clockify_mcp.writes')]; "
+        "assert bad == [], bad"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)
