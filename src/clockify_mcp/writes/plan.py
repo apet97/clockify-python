@@ -89,6 +89,10 @@ class WritePlan:
 
     @property
     def digest(self) -> str:
+        # `reconciliation` is deliberately outside the digest: it is read-only,
+        # runs post-dispatch, and executes from the permit's stored plan object,
+        # never from re-supplied input (review finding D). If reconciliation ever
+        # gains security-relevant behavior, add it here.
         material = {
             "version": self.version,
             "title": self.title,
@@ -125,8 +129,16 @@ def arguments_digest_of(arguments: dict[str, Any]) -> str:
 
 
 def render_preview(prepared: PreparedWrite) -> str:
-    """Deterministic human preview. Contains nothing volatile beyond the stored nonce."""
+    """Deterministic human preview. Contains nothing volatile beyond the stored nonce.
+
+    Review finding P: the preview must show the exact bound wire data, not a
+    builder-written summary alone. Every step's path arguments, query pairs, and
+    canonical body are rendered from the same values the digest binds. Builders
+    must never place raw secrets in bound bodies (W-13) — secret-bearing fields
+    are digest-represented before plan construction.
+    """
     plan = prepared.plan
+    validity_seconds = int(prepared.expires_at - prepared.issued_at)
     lines = [
         f"Action: {plan.title}",
         f"Confirmation ID: {prepared.nonce[:12]}",
@@ -135,11 +147,25 @@ def render_preview(prepared: PreparedWrite) -> str:
         f"Effect: {plan.effect}",
         f"Scope: {plan.scope}",
         f"Reversibility: {plan.reversibility}",
-        "Steps:",
+        "Steps (exact approved requests):",
     ]
     for index, step in enumerate(plan.steps, start=1):
         operation = step.operation
         lines.append(f"  {index}. {operation.http_method} {operation.path} ({step.operation_id})")
+        for name, value in step.path_arguments:
+            lines.append(f"     path {name}: {value}")
+        for name, value in step.query:
+            lines.append(f"     query {name}: {value}")
+        if step.body_json is not None:
+            lines.append(f"     body: {step.body_json.decode('utf-8')}")
+        for name, value in step.multipart_fields:
+            lines.append(f"     field {name}: {value}")
+        for file_digest in step.files:
+            lines.append(
+                f"     file {file_digest.field_name}: {file_digest.filename} "
+                f"({file_digest.size} bytes, {file_digest.content_type}, "
+                f"sha256 {file_digest.sha256[:16]}…)"
+            )
     if plan.preview_fields:
         lines.append("Details:")
         for preview_field in plan.preview_fields:
@@ -150,7 +176,7 @@ def render_preview(prepared: PreparedWrite) -> str:
         lines.append("Warnings:")
         for warning in plan.warnings:
             lines.append(f"  - {warning}")
-    lines.append("Valid for: 5 minutes")
+    lines.append(f"Valid for: {validity_seconds} seconds")
     lines.append("Decision: approve or reject")
     return "\n".join(lines)
 

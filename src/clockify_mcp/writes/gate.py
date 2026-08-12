@@ -34,7 +34,9 @@ class WriteGate:
     ) -> PreparedWrite:
         """Issue (or re-fetch) the pending confirmation for these exact arguments."""
         arguments_digest = arguments_digest_of(arguments)
-        key = derive_key(self._process_secret, self.principal_id, tool_name, arguments_digest)
+        key = derive_key(
+            self._process_secret, self.principal_id, tool_name, arguments_digest, workspace_id
+        )
         return await self.store.get_or_issue(
             key=key,
             principal_id=self.principal_id,

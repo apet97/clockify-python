@@ -16,6 +16,7 @@ uv add "clockify-python-115[mcp]"   # SDK + MCP server
 import asyncio, os
 from clockify import ClockifyClient
 
+
 async def main():
     async with ClockifyClient(
         api_key=os.environ["CLOCKIFY_API_KEY"],
@@ -25,6 +26,7 @@ async def main():
         projects = await clockify.projects.list(archived=False)
         tag = await clockify.tags.create({"name": "example"})
         await clockify.tags.delete(tag.id)
+
 
 asyncio.run(main())
 ```

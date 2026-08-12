@@ -49,6 +49,10 @@ class ControlledWriteExecutor:
         return self._terminal
 
     def _validate(self, step_index: int, step: WriteStep) -> None:
+        # Principal and tool identity are bound at WriteGate.consume (the permit
+        # cannot exist otherwise); destination service is inside request_digest
+        # and final-host validation still runs below the gate in the transport
+        # (review finding E — defence-in-depth note, not an enforcement gap).
         if self._terminal:
             raise PermitViolation("permit is terminal; no further step may dispatch")
         if step_index != self._next_index:
@@ -81,8 +85,12 @@ class ControlledWriteExecutor:
     async def dispatch(self, step_index: int, step: WriteStep) -> StepOutcome:
         """Dispatch exactly the approved step. Any ambiguity is terminal."""
         self._validate(step_index, step)
+        # Review finding X: send the permit's stored step object, never the
+        # caller's, so the gate does not depend on request_digest covering every
+        # current and future WriteStep field.
+        approved_step = self._permit.plan.steps[step_index]
         try:
-            status_code, request_id, data = await self._sender(step)
+            status_code, request_id, data = await self._sender(approved_step)
         except asyncio.CancelledError:
             self._terminal = True
             raise

@@ -28,15 +28,24 @@ def derive_principal_id(process_secret: bytes, credential: Credential) -> str:
 
 
 def derive_key(
-    process_secret: bytes, principal_id: str, tool_name: str, arguments_digest: str
+    process_secret: bytes,
+    principal_id: str,
+    tool_name: str,
+    arguments_digest: str,
+    workspace_id: str | None,
 ) -> str:
-    """Stable pending-record key across MRTR rounds; reveals no secret."""
+    """Stable pending-record key across MRTR rounds; reveals no secret.
+
+    workspace_id is in the key material (review finding B) so calls differing
+    only by workspace can never share a pending record.
+    """
     material = b"\x00".join(
         (
             b"clockify-write-key-v1",
             principal_id.encode(),
             tool_name.encode(),
             arguments_digest.encode(),
+            (workspace_id or "").encode(),
         )
     )
     return hmac.new(process_secret, material, "sha256").hexdigest()

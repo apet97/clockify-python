@@ -90,6 +90,9 @@ class InMemoryNonceStore:
                 del self._tombstones[nonce]
 
     def _plan_size(self, plan: WritePlan) -> int:
+        """Byte size of everything the record retains (review finding A: every
+        stored string counts, or the 256 KiB cap is bypassable via warnings/
+        summary/preconditions)."""
         total = 0
         for step in plan.steps:
             if step.body_json is not None:
@@ -97,8 +100,21 @@ class InMemoryNonceStore:
             total += sum(len(k) + len(v) for k, v in step.path_arguments)
             total += sum(len(k) + len(v) for k, v in step.query)
             total += sum(len(k) + len(v) for k, v in step.multipart_fields)
+            for file_digest in step.files:
+                total += (
+                    len(file_digest.field_name)
+                    + len(file_digest.filename)
+                    + len(file_digest.content_type)
+                    + len(file_digest.sha256)
+                )
         for preview_field in plan.preview_fields:
             total += len(preview_field.label) + len(preview_field.value)
+        total += len(plan.title) + len(plan.summary) + len(plan.effect)
+        total += len(plan.scope) + len(plan.reversibility)
+        total += sum(len(s) for s in plan.sensitivity)
+        total += sum(len(w) for w in plan.warnings)
+        for precondition in plan.preconditions:
+            total += len(precondition.description) + len(precondition.fingerprint)
         return total
 
     async def get_or_issue(
@@ -118,6 +134,18 @@ class InMemoryNonceStore:
             existing = self._pending.get(key)
             if existing is not None:
                 if existing.plan_digest == plan_digest:
+                    # Review finding B: the reuse branch must not trust `key`
+                    # alone — every caller binding must match the stored record.
+                    bindings_match = (
+                        hmac.compare_digest(existing.principal_id, principal_id)
+                        and existing.tool_name == tool_name
+                        and existing.workspace_id == workspace_id
+                        and hmac.compare_digest(existing.arguments_digest, arguments_digest)
+                    )
+                    if not bindings_match:
+                        raise ConfirmationMismatch(
+                            "pending confirmation key collision with different bindings"
+                        )
                     return existing
                 # Current state changed the plan: old approval must not carry over.
                 self._by_nonce.pop(existing.nonce, None)
@@ -177,7 +205,7 @@ class InMemoryNonceStore:
                 raise ConfirmationExpired("confirmation expired; request a new preview")
             checks = (
                 hmac.compare_digest(record.principal_id, principal_id),
-                record.tool_name == tool_name,
+                hmac.compare_digest(record.tool_name, tool_name),
                 hmac.compare_digest(record.arguments_digest, arguments_digest),
                 hmac.compare_digest(record.plan_digest, plan_digest),
             )
