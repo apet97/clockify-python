@@ -1,146 +1,60 @@
-# Implementation status
+# Direction A release-candidate receipt
 
-## Goal
-Complete Clockify Python SDK (`clockify`) + MCP (`clockify_mcp`) per `docs/port/` blueprints.
-Distribution `clockify-python-115`, console `clockify-mcp`.
+## Release mode
 
-## Blueprint hashes (verified 2026-08-12)
-- MASTER_IMPLEMENTATION_PLAN.md `98cd9d52…83f9513` ✓
-- OPERATION_PORT_MANIFEST.md `c980a24f…30e2846` ✓
-- MCP_WRITE_SAFETY_PLAN.md `f278b1dd…200311` ✓
-- Corrected OpenAPI `38b6dcda…016d3d94` ✓ (at `../clockify-ts-sdk/spec/corrected/`)
+`0.1.0` local release candidate. The Python SDK is complete. The default MCP
+server is read-only. No push, tag, release, or publication has occurred.
 
-## Reference repo
-- `../clockify-ts-sdk` HEAD `d7091a44a1b95d4918fa17a7f9b174bf668a9136` (equals plan anchor).
-- Initial tracked status: clean (no tracked modifications).
+## Contract
 
-## Current phase
-COMPLETE (2026-08-12). All ten phases implemented; final gates green; wheel
-smokes green; live suite green with zero residue. MCP writes: safety core +
-wave-1 adapter proven; release registration remains read-only because two ship
-conditions are structurally unmeetable here (independent human review, two real
-host approval-UI proofs).
+- 168 operations, 29 resources, and 168 explicit public methods.
+- 62 reads: 49 GET and 13 POST.
+- 106 SDK writes.
+- 157 regular, 10 reports, and one audit-log operation.
+- Three multipart operations and 339 reachable schema roots.
+- 60 raw MCP reads, five workflows, 65 total tools, zero registered writes.
 
-## Design decisions worth knowing (deviations documented)
-- ReadOnlyExecutor lives in clockify._transport.executor (re-exported by
-  clockify_mcp.read_executor) so the SDK enforces it without importing MCP code.
-- MCP raw read tools dispatch via client.raw.call (registered op IDs only, same
-  ReadOnlyExecutor) instead of resource methods, so ReadResult can carry
-  request_id + Last-Page; workflows use resource methods.
-- Multipart ops with no file send form fields as filename-less multipart parts
-  (updateExpense stays multipart/form-data — proven in wiring tests).
-- Retry policy lives in config.py + executor (no separate retry.py).
+## Final gates and artifacts
 
-## Completed phases
-- Phases 4-5 (adb992e): 29 resource modules / 168 explicit methods, 168-op wiring suite
-  (tests/contract/wiring/, COVERED completeness test), pagination.py + money.py + deviation
-  regressions (tests/contract/test_known_deviations.py).
-- Phases 6-7 (95b2fb8): read MCP — 60 raw tools (27 domain modules under
-  clockify_mcp/tools/), 5 workflows, ReadOnlyExecutor boundary tests, in-memory MCP tests,
-  real stdio smoke (65 tools listed), shared-report JSON/CSV-only pre-network rejection.
-- Phase 1 skeleton (commit 4f81dcd): pyproject/uv/ruff/pyright/pytest/ci, wheel smoke green.
-- Phase 2 models (c317786 + tests): importer `scripts/import_openapi.py` (fail-closed),
-  339 roots → 30 domain modules + explicit __init__; request extra=forbid /
-  response extra=allow proven; importer fixture tests.
-- Phase 2 registry + Phase 3 transport (ee38c60): 168 hand-authored Operation records in
-  29 domain modules (six extraction subagents, main-thread verified against spec —
-  tests/contract/test_complete_surface.py all green incl. byte-exact path/query check);
-  HttpExecutor + ReadOnlyExecutor + auth/hosts/encode/decode + raw escape hatch;
-  45 transport tests (retry boundary incl. GET-write trap, outcome-unknown, cancellation,
-  redirects refused, custom-host opt-in, multipart, content-negotiation).
-  Wiring fixtures for Phase 4 at tests/fixtures/wiring/*.json (168 ops, request/response
-  model names + deviation notes).
-- Phase 0 (spike scripts deleted; conclusions below). Counts verified from spec+manifest:
-  168 ops, 62 non-mutating (49 GET + 13 POST), 106 mutating, hosts 157/10/1,
-  exactly 3 multipart (uploadImage, createExpense, updateExpense — spec omits the
-  expense request bodies; manifest is authoritative), 339 reachable schema roots
-  (closure must traverse components/parameters+responses+requestBodies), 6 unreachable
-  schemas match manifest. All (resource, method) pairs unique, none a Python keyword.
+The release-candidate code is commit `e755016`. Final evidence-only documents
+follow that commit.
 
-### Phase 0 MCP v2 seam facts (mcp 2.0.0, pydantic 2.13.4)
-- Imports: `from mcp.server import MCPServer`; `from mcp.server.mcpserver import Elicit, Resolve`;
-  `from mcp.server.request_state import RequestStateSecurity` (kwargs `keys=[32B]`,
-  `bind_principal=fn(ctx)->str|None`, `ttl`); pass as `MCPServer(request_state_security=...)`.
-- Tool registration: `@server.tool()`; resolver params must be tool-argument names,
-  `Context`, or nested `Resolve`. Resolved params stay out of `tool.input_schema` (proven).
-- In-memory testing: `mcp.Client(server, elicitation_callback=..., mode="legacy"|"auto")`;
-  high-level `client.call_tool` drives MRTR rounds; low-level
-  `client.session.call_tool(..., allow_input_required=True, input_responses={id: {...}},
-  request_state=...)` exposes raw rounds. `InputRequiredResult.input_requests` maps id→request.
-- PROVEN: byte-identical `request_state` replay passes integrity and dispatches the tool
-  body twice → server-side atomic nonce store is mandatory (plan confirmed).
-- PROVEN: legacy mode (`mode="legacy"`) resolves the same Elicit resolver.
-- PROVEN: real stdio (`server.run(transport="stdio")` + `mcp.client.stdio.stdio_client`)
-  keeps stdout protocol-clean while server logs to stderr.
-- Pydantic seams proven: alias round-trip incl. `page-size`, extra forbid/allow with
-  `model_extra`, RootModel arrays, None-vs-unset serialization split.
+- Ruff check and format check: pass.
+- Pyright strict mode: 0 errors.
+- Offline suite: 459 passed, 6 deselected.
+- Authorized live sacrificial suite: 6 passed, 459 deselected, zero residue.
+- Installed wheel: pass on Python 3.11, 3.12, 3.13, and 3.14.
+- Installed sdist: pass on Python 3.14.
+- Official MCP client: initialize, exact 65 tools, exact 60 raw reads plus five
+  workflows, zero writes, controlled pre-network rejection, protocol-only stdout.
+- Mutant campaign: all 15 required mutants killed in one disposable worktree.
+- Deterministic build: both wheel and sdist matched byte-for-byte across two builds.
 
-## Last known green commands (2026-08-12, round-3 re-review)
-- uv run ruff check . / ruff format --check . / pyright  → clean
-- uv run pytest -q -m "not live"  → 425 passed
-- uv run pytest -q -m live  → 5 passed (see Live-test runs)
-- uv build; wheel[mcp] install into clean venvs (3.14 + 3.11): SDK import,
-  `clockify-mcp --help`, and real stdio list_tools (65) all green.
+Artifact hashes:
 
-## Current work in progress
-(none — implementation complete)
+- wheel: `ea85c93fb6108d828576fea9eec6433f48e8ae8210df4d33d317d971d4dfb60c`
+- sdist: `259afe53aa3bfc1480211664b21bfd7f535db4f7293edc24899d350a8440905d`
 
-## Completed phases (later)
-- Phase 8 (689bdaf, 6201ee0): write-safety core (canonical/plan/nonce/gate/
-  executor/reconcile), 62 adversarial tests, fresh-context adversarial review at
-  docs/mcp-write-safety-review.md; all findings (P,A,B,C,T,X,D,E) fixed.
-- Phase 9 wave 1 (4de8c4b): clockify_tags_create through the full gate;
-  build_approved_server separate from the shipped read-only server; live Phase G
-  proof green, zero residue. Later waves deliberately deferred: each write needs
-  individual review and host-UI evidence per plan; batching them is forbidden.
-- Phase 10: docs (architecture/api-deviations/mcp/live-tests), README,
-  CHANGELOG, examples/sdk_quickstart.py, uv build, clean-venv wheel[mcp] smokes
-  (3.14 + 3.11), console + real-stdio smoke (65 tools), live suite 6/6.
+## Live proof
 
-## Unresolved evidence questions / real blockers
-- Target-host human-approval UI evidence (2 real hosts) — unmet ship condition,
-  requires interactive host products; MCP writes stay unregistered.
-- Several PUT omission rules remain UNKNOWN_CONSERVATIVE per manifest.
+The current remediation ran the marked suite against the configured
+sacrificial workspace. It proved identity, read behavior, tag and project
+lifecycle cleanup, one explicitly approved dormant write-gate path, and zero
+residue. This does not enable or register MCP writes in the default server.
 
-## Live-test runs
-- Run 2026-08-12, prefix `py115-<random>` (fresh per run): me/workspace identity,
-  read smoke, Last-Page header, tag create→get→full-replace-archive→delete,
-  project create→delete-403-proof→archive→delete. Residue: 0 (asserted in-suite).
+## Owner and external actions
 
-## Material deviations from blueprint
-- Live workspace shapes: `features` enum open; `entityCreationPermissions`
-  values plain strings → importer STR_UNION_REFS + regression test (f510d21).
-- See "Design decisions worth knowing" above for structural choices.
+1. Rotate or revoke the credential identified by the internal value-aware scan.
+2. Remove the stale shell-profile value.
+3. Optionally expire reflogs and run Git garbage collection only after rotation
+   and after preserving required recovery history.
+4. Create or select the GitHub remote and protect the release environment.
+5. Configure the PyPI Trusted Publisher for `.github/workflows/release.yml` and
+   environment `pypi`.
+6. Push, tag, publish, and verify the immutable public artifacts.
+7. Before any MCP write registration, obtain independent review and approval-UI
+   evidence from two intended hosts.
 
-## Adversarial-review remediation (2026-08-12)
-- Round 1 (commit "fix(review): remediate adversarial findings F1-F5
-  test-first"): findings F1-F5 remediated test-first. Suite 407 → 421 green.
-- Round 2 (final audit, verdict PASS WITH EXTERNAL WRITE BLOCKERS): findings
-  F-A (identity-pinning test for stored-approved-step dispatch, mutant-proven)
-  and F-B (missing corrected-OpenAPI evidence now fails by default; explicit
-  `CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE=1` opt-out; CI clones the evidence
-  repo at the pinned commit) remediated test-first in the release-candidate
-  commit. Suite 421 → 423 green. See `ADVERSARIAL_REVIEW.md` §10 for proofs.
-- Round 3 (full-repo re-review of 232f06a, two fresh reviewers): R3-1 HIGH
-  (multipart list fields sent as Python repr — `changeFields` now expands to
-  repeated parts), R3-2 MEDIUM (bytes in model `file` field now fails closed
-  pre-network with `Upload` guidance), R3-4 LOW (tombstone ttl from consume),
-  R3-5 LOW (read_capability docstring honesty). All test-first. Suite
-  423 → 425. See `ADVERSARIAL_REVIEW.md` §11.
-- **Release candidate: the current `main` HEAD — the round-3 remediation
-  commit directly succeeding `232f06a` (superseding earlier release
-  references).** Release-proof at that commit: all gates green; wheel
-  `[mcp]` installed into clean 3.11/3.13/3.14 venvs (import + `clockify-mcp
-  --help`); 3.14 signature-introspection contract green on the installed
-  artifact; installed-3.11 real-stdio session: 65 tools = 60 raw reads + 5
-  workflows, zero write tools, one controlled live read, protocol-only stdout.
-- F1 owner actions still open (not automatable in-repo): reflog
-  expire + gc on a clean tree, then rotate the sacrificial CLOCKIFY_API_KEY.
-
-## Next exact action
-Nothing pending in-code. Remaining work is external: (1) independent human
-adversarial review of clockify_mcp/writes; (2) approval-UI evidence on two real
-MCP hosts; (3) then wave-2+ write adapters one reviewed tool at a time; (4)
-optional PyPI publish via explicit release workflow (never done automatically).
-
-
+The next legitimate in-repository milestone is a separately approved MCP write
+wave or a versioned maintenance change. There is no completed-campaign
+continuation task.
