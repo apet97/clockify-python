@@ -194,6 +194,33 @@ async def test_cancellation_is_terminal_without_further_steps() -> None:
     assert executor.terminal
 
 
+async def test_sender_receives_stored_approved_step_by_identity() -> None:
+    """Regression (F-A): dispatch must send the permit's stored step object.
+
+    The caller-owned step below is equal in every digested field, so a mutant
+    that forwards the caller's object still passes all digest checks. Only an
+    identity assertion on the object the sender received detects it.
+    """
+    permit = make_permit()
+    sender = RecordingSender()
+    executor = ControlledWriteExecutor(permit, sender)
+    caller_step = WriteStep(
+        operation_id=ARCHIVE_STEP.operation_id,
+        path_arguments=ARCHIVE_STEP.path_arguments,
+        query=ARCHIVE_STEP.query,
+        body_json=ARCHIVE_STEP.body_json,
+        multipart_fields=ARCHIVE_STEP.multipart_fields,
+        files=ARCHIVE_STEP.files,
+    )
+    assert caller_step == permit.plan.steps[0]
+    assert caller_step.request_digest == permit.plan.steps[0].request_digest
+    assert caller_step is not permit.plan.steps[0]
+    await executor.dispatch(0, caller_step)
+    received_step = sender.dispatched[0]
+    assert received_step is permit.plan.steps[0]
+    assert received_step is not caller_step
+
+
 async def test_partial_failure_shape() -> None:
     """Step 1 applies, step 2 fails: exactly one dispatch each, no rollback dispatch."""
     sender = RecordingSender(

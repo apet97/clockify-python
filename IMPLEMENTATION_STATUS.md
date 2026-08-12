@@ -113,10 +113,21 @@ host approval-UI proofs).
 - See "Design decisions worth knowing" above for structural choices.
 
 ## Adversarial-review remediation (2026-08-12)
-- HEAD `6c0d359` — findings F1-F5 from `ADVERSARIAL_REVIEW.md` remediated
-  test-first (see its remediation appendix for disposition/test/fix/proof).
-  Suite 407 → 421 green; all gates re-run; clean 3.11/3.14 wheel installs;
-  real-stdio 65 tools, zero write-hinted; live suite 6/6, zero residue.
+- Round 1 (commit "fix(review): remediate adversarial findings F1-F5
+  test-first"): findings F1-F5 remediated test-first. Suite 407 → 421 green.
+- Round 2 (final audit, verdict PASS WITH EXTERNAL WRITE BLOCKERS): findings
+  F-A (identity-pinning test for stored-approved-step dispatch, mutant-proven)
+  and F-B (missing corrected-OpenAPI evidence now fails by default; explicit
+  `CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE=1` opt-out; CI clones the evidence
+  repo at the pinned commit) remediated test-first in the release-candidate
+  commit. Suite 421 → 423 green. See `ADVERSARIAL_REVIEW.md` §10 for proofs.
+- **Release candidate: the current `main` HEAD — the single remediation commit
+  directly succeeding `87e1553` (superseding both `972fd5e` and `87e1553` as
+  release references).** Release-proof at that commit: all gates green; wheel
+  `[mcp]` installed into clean 3.11/3.13/3.14 venvs (import + `clockify-mcp
+  --help`); 3.14 signature-introspection contract green on the installed
+  artifact; installed-3.11 real-stdio session: 65 tools = 60 raw reads + 5
+  workflows, zero write tools, one controlled live read, protocol-only stdout.
 - F1 owner actions still open (not automatable in-repo): reflog
   expire + gc on a clean tree, then rotate the sacrificial CLOCKIFY_API_KEY.
 

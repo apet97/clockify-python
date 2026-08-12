@@ -2,6 +2,9 @@ name: CI
 on:
   push:
   pull_request:
+defaults:
+  run:
+    working-directory: 2mcp
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -10,6 +13,16 @@ jobs:
         python-version: ["3.11", "3.13"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: 2mcp
+      # Completeness evidence: the corrected OpenAPI must be present as a
+      # sibling at the exact pinned commit. Never set
+      # CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE in this workflow.
+      - uses: actions/checkout@v4
+        with:
+          repository: apet97/clockify-ts-sdk
+          ref: d7091a44a1b95d4918fa17a7f9b174bf668a9136
+          path: clockify-ts-sdk
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}

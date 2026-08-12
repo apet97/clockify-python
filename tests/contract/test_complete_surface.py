@@ -1,11 +1,15 @@
 """Registry contract: exact counts and byte-exact agreement with the corrected OpenAPI.
 
-The corrected spec is read from the sibling evidence repository when present.
-Count/uniqueness tests never need it; the spec cross-check skips if it is absent
-(e.g. in CI), because the committed registry is the runtime source of truth.
+The corrected spec is read from the sibling evidence repository. Count/uniqueness
+tests never need it. The spec cross-check REQUIRES the evidence: a missing sibling
+repository fails the test by default so completeness evidence cannot silently
+disappear. Only an explicit CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE=1 permits an
+intentional evidence-less run (one clearly explained skip). Release CI clones
+apet97/clockify-ts-sdk at the pinned commit and never sets the opt-out.
 """
 
 import keyword
+import os
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -22,6 +26,30 @@ SPEC_PATH = (
     / "corrected"
     / "clockify.corrected.openapi.yaml"
 )
+EVIDENCE_PIN = "d7091a44a1b95d4918fa17a7f9b174bf668a9136"
+EVIDENCE_OPT_OUT = "CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE"
+
+
+def evidence_gate(spec_exists: bool, environ: dict[str, str]) -> str:
+    """Decide how the spec cross-check runs: 'run', 'skip', or 'fail'.
+
+    Missing evidence fails by default; only the explicit opt-out variable set to
+    exactly "1" converts it into one clearly explained skip.
+    """
+    if spec_exists:
+        return "run"
+    if environ.get(EVIDENCE_OPT_OUT) == "1":
+        return "skip"
+    return "fail"
+
+
+def test_evidence_gate_states() -> None:
+    assert evidence_gate(True, {}) == "run"
+    assert evidence_gate(True, {EVIDENCE_OPT_OUT: "1"}) == "run"
+    assert evidence_gate(False, {}) == "fail"
+    assert evidence_gate(False, {EVIDENCE_OPT_OUT: "0"}) == "fail"
+    assert evidence_gate(False, {EVIDENCE_OPT_OUT: ""}) == "fail"
+    assert evidence_gate(False, {EVIDENCE_OPT_OUT: "1"}) == "skip"
 
 
 def test_exactly_168_operations() -> None:
@@ -82,8 +110,22 @@ def test_mutating_operations_never_paginate() -> None:
             assert op.pagination is None, op.operation_id
 
 
-@pytest.mark.skipif(not SPEC_PATH.exists(), reason="corrected OpenAPI evidence not present")
 def test_registry_agrees_with_corrected_openapi() -> None:
+    verdict = evidence_gate(SPEC_PATH.exists(), dict(os.environ))
+    if verdict == "skip":
+        pytest.skip(
+            "corrected OpenAPI evidence intentionally absent: "
+            f"{EVIDENCE_OPT_OUT}=1 was set explicitly, so the spec cross-check "
+            "is skipped for this run only. Never set this in development or "
+            "release CI."
+        )
+    if verdict == "fail":
+        pytest.fail(
+            f"corrected OpenAPI evidence missing at {SPEC_PATH}. Clone "
+            f"https://github.com/apet97/clockify-ts-sdk at commit {EVIDENCE_PIN} "
+            "as a sibling directory of this repository, or — only for an "
+            f"intentional evidence-less run — set {EVIDENCE_OPT_OUT}=1."
+        )
     yaml = pytest.importorskip("yaml")
     spec = yaml.safe_load(SPEC_PATH.read_bytes())
 

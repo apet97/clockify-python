@@ -1,294 +1,303 @@
 # ADVERSARIAL_REVIEW.md
 
-Independent release audit of `clockify-python-115` at commit `972fd5e`.
-Date: 2026-08-12. Auditor session: adversarial review only; nothing was repaired.
-All claims below were re-derived from source, the manifest, and executable evidence —
+Independent release audit of `clockify-python-115` at commit `87e1553`.
+Date: 2026-08-12 (07:00 CEST). Audit-only session: nothing was repaired.
+All claims were re-derived from source, the manifest, and executable evidence —
 not from `IMPLEMENTATION_STATUS.md`, commit messages, or the repo's own count tests.
+
+Note on the audited commit: the review request named `972fd5e` as the completion
+claim. The repository HEAD is `87e1553`, two commits past it
+(`6c0d359` "remediate adversarial findings F1-F5 test-first" and `87e1553` docs).
+This audit examined HEAD `87e1553`; the earlier findings F1–F5 from the previous
+audit round are confirmed remediated at HEAD (see §6).
 
 ## Verdict
 
 **PASS WITH EXTERNAL WRITE BLOCKERS** — the read-only release mode is ready.
-Writes remain disabled pending independent human approval and real-host approval-UI
-evidence, **plus the two write-core test gaps below (findings F2, F3), which must be
-repaired before any write tool is registered**. No finding affects the shipped
-read-only server's behavior against any external input.
+Writes remain disabled pending independent human approval and real-host
+approval-UI evidence per `docs/port/MCP_WRITE_SAFETY_PLAN.md`. One MEDIUM
+test-gap finding (F-A below) exists in the unregistered write core and must be
+repaired before any write tool is registered; it does not affect the shipped
+read-only server against any external input.
 
 ## 1. Baseline (independently verified)
 
-- HEAD `972fd5ee7579bd2b1dd2e4e7d5ee7073ba8b9b3a`, working tree clean.
+- HEAD `87e155398ac2a1482b6df8a9a0a7a0f4b6e611b6`, working tree clean, single ref
+  `refs/heads/main`, no remotes touched.
 - Blueprint SHA-256:
   - `MASTER_IMPLEMENTATION_PLAN.md` `98cd9d525d6b90d7c0f8fd72df04d4c30a43d1034d00a25d7b050cbe983f9513`
-  - `MCP_WRITE_SAFETY_PLAN.md` `f278b1ddbcd846b31e31d54ccd9942b460f13bf0e5fc5e16943d0b6ded200311`
   - `OPERATION_PORT_MANIFEST.md` `c980a24fcf87c91b504a500744e1c8a3cda9b5116a78135769695d45a30e2846`
-- Sibling `../clockify-ts-sdk`: HEAD `d7091a44a1b95d4918fa17a7f9b174bf668a9136`, status clean, never modified.
-- `pyproject.toml`: distribution `clockify-python-115` 0.1.0; packages `src/clockify` +
-  `src/clockify_mcp`; console `clockify-mcp = clockify_mcp.__main__:main`; Python >= 3.11;
-  runtime deps httpx + pydantic only; MCP deps behind `[mcp]` extra. Dependency direction
-  correct: `clockify` never imports `clockify_mcp`.
-- Credential in Git: `.mcp.json` is absent from every reachable commit
-  (`git rev-list --all` tree scan: zero hits) and from every ref. `git log -S CLOCKIFY_API_KEY`
-  over all refs: zero hits. All 8 dangling objects scanned: no credential content.
-  **Separately reported (F1): one reflog-only commit still holds the key — see findings.**
-- Wheel (167 files) and sdist (259 files) inspected byte-level: no `.env`, no `.mcp.json`,
-  no credential-shaped content, no test files in the wheel.
+  - `MCP_WRITE_SAFETY_PLAN.md` `f278b1ddbcd846b31e31d54ccd9942b460f13bf0e5fc5e16943d0b6ded200311`
+- Sibling `../clockify-ts-sdk`: HEAD `d7091a44a1b95d4918fa17a7f9b174bf668a9136`,
+  status clean, never modified by this audit.
+- `pyproject.toml`: distribution `clockify-python-115` 0.1.0; import packages
+  `clockify` + `clockify_mcp`; console `clockify-mcp = clockify_mcp.__main__:main`;
+  `requires-python >= 3.11`; hatchling; runtime deps httpx + pydantic only;
+  MCP deps behind the `[mcp]` extra. Dependency direction correct: importing
+  `clockify_mcp.server` loads zero `clockify_mcp.writes.*` modules
+  (verified via `sys.modules` inspection), and `clockify` never imports
+  `clockify_mcp`.
 
-## 2. Gates (run by the auditor, not replayed from claims)
+### Credential / .mcp.json hygiene
+
+- `.mcp.json` exists locally, is untracked, and is listed in `.gitignore`
+  (working tree reports clean).
+- Reachable history: a full `git rev-list --all` tree scan finds `.mcp.json`
+  in **zero** commits. No secret-bearing file in any ref.
+- Dangling/reflog-only objects (reported separately, per instructions):
+  `git fsck --unreachable --dangling` finds 2 unreachable commits, several
+  trees, and blobs. Both unreachable commits' trees were enumerated: they
+  contain only earlier revisions of `clockify_mcp` source and the safety plan —
+  **no `.mcp.json`**. Every unreachable blob was content-scanned against the
+  actual local secret value: zero matches. The secret value was never printed.
+- Build artifacts: wheel (168 files, packages `clockify`, `clockify_mcp`,
+  dist-info only) and sdist were scanned; no `.mcp.json`, no `.env`, zero
+  occurrences of the secret.
+- Runtime: `Credential.__repr__` redacts (`secret=<redacted>`,
+  `src/clockify/_transport/auth.py:24`); the stdio probe with a fake key
+  confirmed no key material in MCP error output.
+
+## 2. Gates (all executed by the auditor)
 
 | Gate | Result |
 |---|---|
-| `uv sync --all-extras --dev` | OK |
+| `uv sync --all-extras --dev` | OK (45 packages resolved) |
 | `uv run ruff check .` | All checks passed |
-| `uv run ruff format --check .` | 240 files already formatted |
+| `uv run ruff format --check .` | 246 files already formatted |
 | `uv run pyright` | 0 errors, 0 warnings |
-| `uv run pytest -q -m "not live"` | **407 passed**, 6 deselected |
+| `uv run pytest -q -m "not live"` | **421 passed, 6 deselected** |
 | `uv build` | wheel + sdist built |
-| Fresh venv Python 3.11, `wheel[mcp]` | `ClockifyClient` imports; `clockify-mcp --help` exit 0 |
-| Fresh venv Python 3.14, `wheel[mcp]` | `ClockifyClient` imports; `clockify-mcp --help` exit 0 |
-| Installed wheel over real stdio | 65 tools listed; all 5 workflows present exactly once; **zero** tools with `read_only_hint=False`; one controlled read (`clockify_status`) succeeded, `is_error=False` |
 
-## 3. Completeness (reconciled from an independent manifest parse)
+### Fresh-environment install proof
 
-An auditor-written parser extracted all operation records from
-`docs/port/OPERATION_PORT_MANIFEST.md` and compared them to the live registry.
+The exact newly built wheel (`clockify_python_115-0.1.0-py3-none-any.whl[mcp]`)
+was installed into two fresh `uv venv` environments:
 
-- Manifest: exactly **168** records, no duplicate ids. Registry `ALL_OPERATIONS` /
-  `BY_ID` / `BY_PUBLIC_METHOD` = 168 each; set diff empty in both directions;
-  per-op method/path/service/mutation/public-method equality: **0 mismatches**.
-- Classifications: 62 reads (49 GET + 13 POST reads, each POST-read named and matched to
-  a `non-mutating` manifest label), 106 writes; **zero GET-verb writes** exist.
-- Exactly 3 multipart operations (`createExpense`, `updateExpense`, `uploadImage`),
-  identical set in manifest and runtime `request_encoding`.
-- Service routing 157 (regular) / 10 (reports) / 1 (audit log) — matches 157/10/1.
-- 29 resources on `ClockifyClient`; exactly 168 public callables; bijection between
-  public methods and operations confirmed by introspection (empty diff both ways).
-- MCP read server (mock transport): 65 unique tools = 60 raw reads + the 5 named
-  workflows (`clockify_status`, `clockify_workspace_overview`, `clockify_review_day`,
-  `clockify_review_week`, `clockify_doctor`), each exposed exactly once; every raw tool
-  maps to a non-mutating operation. The 62−60 gap is the two binary reads
-  (`expenses.download_receipt`, `invoices.export`), excluded by the master plan.
-- 8 random end-to-end spot checks (seed 20260812): manifest record → operation constant
-  → resource method → focused wiring test — all 8 intact.
+- Python **3.11**: `from clockify import ClockifyClient` → `ClockifyClient`;
+  `clockify-mcp --help` prints usage.
+- Python **3.13**: same, both pass.
 
-## 4. Network / SDK boundary (attacked from source + tests)
+### Real stdio session
 
-Confirmed by direct code inspection and targeted execution:
+The **installed** `clockify-mcp` (from the 3.11 venv, not the source tree) was
+spawned over real stdio with the official `mcp` client:
 
-- Exactly-one-credential XOR enforced (`auth.py:16`); empty strings coerced to absent;
-  repr/str redact the secret (verified live: `secret=<redacted>`).
-- `validate_destination` runs **before** `Credential.attach`; `follow_redirects=False`;
-  custom hosts are explicit opt-in.
-- Retry keyed on `operation.semantics.mutates`, not HTTP verb: POST reads retryable,
-  writes never (mutant #2 below proves the tests bite); no retry policy by default.
-- Transport error on a write → `MutationOutcomeUnknownError`, except provably-undispatched
-  `ConnectError`/`ConnectTimeout` → plain transport error. Correct semantics.
-- Pagination: empty page, `Last-Page: true`, short-page-without-header, repeated-page
-  loop (`PaginationLoopError`), and `max_pages` (`PaginationIncompleteError` with partial
-  items) all implemented as specified.
-- `raw.call` accepts only registered operation ids and passes through `ReadOnlyExecutor`,
-  which rejects `mutates=True` before any HTTP (backend saw zero requests in tests).
-- Shared-report view rejects PDF/XLSX before network (`tools/shared_reports.py:48-50`,
-  exercised over real stdio).
+- `initialize` + `tools/list` → **65 tools**: 60 raw reads + exactly the five
+  workflows `clockify_status`, `clockify_workspace_overview`,
+  `clockify_review_day`, `clockify_review_week`, `clockify_doctor`.
+- One controlled read (`clockify_status` with an intentionally invalid key)
+  executed the full dispatch path and returned a structured `is_error` result
+  ("Clockify API error 401 on getCurrentUser") with no key material leaked.
+- Stdout carried protocol frames only (the client session would have failed to
+  parse otherwise); server logging is configured to stderr
+  (`src/clockify_mcp/server.py`).
 
-## 5. Read-server structural proofs
+## 3. Completeness reconciliation (independent, both directions)
 
-- Fresh interpreter importing `clockify_mcp.server` (source tree **and** installed wheel):
-  zero `clockify_mcp.writes*` modules loaded.
-- Server construction makes no Clockify request (asserted against a recording backend).
-- stdout is protocol-only: all `print()` in `__main__.py` go to stderr; logging is
-  configured to stderr; the failure path proves `stdout == b""`.
-- No `__getattr__`, no runtime generation, no decorator scanning, no TODO/pass/
-  NotImplementedError in production paths (the only `pass` bodies are exception classes
-  in the never-imported `writes/` package). Single operation truth: `registry.BY_ID`.
+All numbers below were computed by introspecting
+`clockify.operations.registry.ALL_OPERATIONS` and walking
+`clockify.resources.*` classes with `inspect` — not by trusting count tests.
 
-## 6. Write-safety core: direct attacks (all blocked)
+- **168** operation records, all `operation_id`s unique; every registry id
+  appears in `docs/port/OPERATION_PORT_MANIFEST.md` (0 missing).
+- **62 reads / 106 writes** by `semantics.mutates`; reads split **49 GET /
+  13 POST** exactly.
+- **29** distinct `resource` values across operations; **168** public
+  non-underscore resource methods discovered across resource modules;
+  `(resource, sdk_method)` pairs are all unique (168), every operation's
+  `sdk_method` resolves to exactly one existing public method, and there are
+  **zero** public resource methods without a backing operation (168 − 168 = 0).
+- Service routing: `regular` **157**, `reports` **10**, `audit_log` **1**.
+- Multipart: exactly **3** (`createExpense`, `updateExpense`, `uploadImage`).
+- GET-verb operations classified as writes: **none exist** in the registry
+  (checked explicitly; the no-write-retry invariant therefore has no GET-verb
+  edge case to defend, and verb-based retry shortcuts would still be caught by
+  the `mutates`-based gate — see mutant M2).
+- MCP surface: 60 raw read tools registered exactly once via explicit per-domain
+  `register()` calls in `src/clockify_mcp/tools/__init__.py` (no decorator
+  scanning, no import-time side registration); 5 workflows; live `tools/list`
+  count 65 confirms no duplicates and no write tool.
+- Shipped write count: **0**. `clockify_mcp/writes/` (including the wave-1
+  `clockify_tags_create` adapter) is present in the package but is imported by
+  no server code path (proved at runtime via `sys.modules`).
 
-Auditor-written attack script against `WriteGate`/`InMemoryNonceStore` (no repo tests used):
+## 4. Network / SDK invariants (spot-verified against source + tests)
 
-| Attack | Result |
-|---|---|
-| Replay consume after consumption | blocked (`ConfirmationAlreadyUsed`) |
-| Tampered plan digest between preview and consume | blocked (`ConfirmationMismatch`) |
-| Wrong principal consuming a valid nonce | blocked (`ConfirmationMismatch`) |
-| 100 concurrent consumers on one nonce | exactly **1** permit issued |
-| Changed arguments digest after prepare | blocked (`ConfirmationMismatch`) |
+- Exactly-one credential: `Credential.__init__` raises unless
+  `bool(api_key) != bool(addon_token)` (`_transport/auth.py:16`).
+- Secret read only at header-attach time, after final-host validation;
+  `follow_redirects=False` hard-set in the executor
+  (`_transport/executor.py:177`).
+- Read retry gated on `not operation.semantics.mutates`
+  (`_transport/executor.py:115`) — semantic, not verb-based, so POST reads
+  retry and any write never does.
+- Mutation attempts through the read path are blocked by two independent
+  layers: `ReadOnlyExecutor` (final boundary, `_transport/executor.py:236`)
+  and the pre-dispatch mutates check at `:183`; the five workflows additionally
+  receive only a `WorkflowReadClient` capability
+  (`clockify_mcp/read_capability.py`, remediation F3) with no `raw.call`, no
+  executor attribute, and no mutating methods.
 
-Existing suite additionally covers expiry, wrong audience/process key, state drift,
-step-order/extra-step violations, cancellation at every boundary, 4xx/5xx/transport
-ambiguity without retry, preview exact-wire visibility, and nonce memory/TTL/entry bounds
-(70 write tests) — and the mutants below prove most of those tests actually bite.
+## 5. Hand-mutant campaign (disposable worktree, all reverted, worktree removed)
 
-## 7. Hand-mutant experiments (disposable worktree, removed after use)
+Baseline in the mutant worktree: 420 passed, 1 skipped (see F-B), 6 deselected.
 
-Baseline in the worktree: 361 relevant tests green before mutating. Each mutant was a
-minimal hand edit, reverted between runs.
+| # | Mutation | Result | Detected? |
+|---|---|---|---|
+| M1 | `ReadOnlyExecutor` rejection disabled (`if mutates:` → `if False:`) | **6 failed** | YES |
+| M2 | Write auto-retry enabled (drop `not mutates` from retryable) | **2 failed** | YES |
+| M3 | Nonce reuse allowed (`ConfirmationAlreadyUsed` never raised) | **3 failed** | YES |
+| M4 | Dispatch caller-supplied step instead of stored approved step | **0 failed** | **NO → finding F-A** |
+| M5 | Principal + workspace binding removed at consume time | **1 failed** | YES |
 
-| # | Mutant | Detected? |
-|---|---|---|
-| 1 | `ReadOnlyExecutor` mutates-rejection neutralized | **YES** — 5 tests fail |
-| 2 | Write auto-retry enabled in `HttpExecutor` | **YES** — 2 tests fail |
-| 3 | Nonce reuse allowed (`consume` keeps the pending record) | **YES** — 5 tests fail |
-| 4 | Caller-supplied step dispatched + digest check removed | **YES** — 2 tests fail |
-| 5a | Principal binding dropped from `consume()` | **YES** — 2 tests fail |
-| 5b | `workspace_id` dropped from `derive_key` HMAC material | **NO — full suite passes** → finding F2 |
-| 6 | `TAGS_CREATE` classification flipped to non-mutating | **YES** — 11 tests fail |
-| 7 | Workflow unwraps `client._executor._inner` and mutates | **NO — workflow tests pass** → finding F3 |
+## 6. Prior findings F1–F5 (previous audit round)
 
-Worktree removed and pruned; main worktree verified untouched and clean afterward.
+Confirmed remediated at HEAD by commit `6c0d359`: consume-time workspace
+binding is present and mutation-detected (M5), the workflow read-boundary
+bypass is closed by `WorkflowReadClient`, and the dot-segment path issue has a
+regression test in the encode layer. No regression observed.
 
-## 8. Findings
+## 7. Findings
 
-### F1 — MEDIUM · live API key survives in a reflog-only commit
-- **Files:** local Git metadata only (`.git/logs`, unreachable commit `63dd88c`); not in any ref or reachable commit.
-- **Proof:** `for c in $(git rev-list --reflog); do git ls-tree -r --name-only $c | grep -q '^\.mcp\.json$' && echo $c; done` → `63dd88c…`; its `.mcp.json` holds the same live key as the current untracked file (compared without printing).
-- **Invariant violated:** "no credential in Git history" — holds for reachable history, not for local reflog.
-- **Consequence:** local-only. `git clone`/`git push` never transfer reflogs, so the key cannot leave this machine through normal Git operations; a wholesale copy of the `.git` directory would carry it.
-- **Smallest repair:** `git reflog expire --expire-unreachable=now --all && git gc --prune=now`, then rotate the sacrificial key.
-- **Regression check:** re-run the reflog scan above; must print nothing.
-- **False-positive rejection:** verified the commit is in no branch/ref (`git branch --contains` empty) and absent from `rev-list --all`; verified the blob really contains the credential key name and the live value.
+### F-A — MEDIUM — stored-step dispatch defense has no pinning test (mutant M4 survives)
 
-### F2 — MEDIUM (write-ship blocker) · workspace binding in `derive_key` has zero test coverage
-- **Files:** `src/clockify_mcp/writes/principal.py` (`derive_key`), tests missing.
-- **Proof:** mutant 5b — removing `workspace_id` from the HMAC key material passes the entire non-live suite (406 passed, 1 skipped).
-- **Invariant violated:** MCP_WRITE_SAFETY_PLAN requires the pending confirmation to be bound to the workspace; the required mutant-detection item "omission of principal/**workspace** binding" is only half-detected (principal yes, workspace no).
-- **Consequence:** a future refactor could silently drop workspace binding; two preparations differing only by workspace could collide on the pending key. Partial defense remains (`get_or_issue` reuse compares `existing.workspace_id`), and `consume()` never checks workspace — key derivation is the intended barrier. Not exploitable in the shipped read-only release (writes unregistered).
-- **Smallest repair:** unit test asserting `derive_key(..., workspace_id="w1") != derive_key(..., workspace_id="w2")` (all else equal), plus a gate-level test that two same-argument prepares in different workspaces yield distinct nonces.
-- **Regression test:** the new tests must fail under mutant 5b.
-- **False-positive rejection:** full-suite run under the mutant, not a subset; grep confirmed no existing test references `derive_key`.
+- **Files:** `src/clockify_mcp/writes/executor.py:91-93`,
+  `tests/mcp/writes/test_controlled_executor.py`.
+- **Proof:** in the disposable worktree, replacing
+  `await self._sender(approved_step)` with `await self._sender(step)` (the
+  caller's object) leaves the entire non-live suite green (420 passed).
+- **Violated invariant:** MCP_WRITE_SAFETY_PLAN — dispatch must use the stored
+  approved request bytes; the code comment for "review finding X" states the
+  gate must not depend on `request_digest` covering every current and future
+  `WriteStep` field, yet only the digest comparison is test-enforced.
+- **Real consequence:** none today — `WriteStep.request_digest`
+  (`writes/plan.py:48-64`) currently covers every dispatch-relevant field
+  (operation, method, service, path template + arguments, query, body sha256,
+  multipart fields, file digests), so a digest-equal caller step is
+  byte-equivalent. The defense-in-depth for a future non-digested field is
+  unprotected by tests and would silently rot.
+- **Smallest correct repair:** one test that dispatches with a caller `WriteStep`
+  object distinct from the stored one and asserts (via a capturing sender) that
+  the sender received the identity object `permit.plan.steps[i]`
+  (`assert received is approved_step`).
+- **Regression test that must fail first:** exactly that test, run against
+  mutant M4.
+- **False-positive checks:** confirmed the digest currently covers all fields
+  (so this is a test gap, not a live bypass); confirmed the writes package is
+  unregistered in the shipped server, so severity stays MEDIUM and blocks only
+  write enablement, not the read-only release.
 
-### F3 — MEDIUM (write-ship blocker) · workflow code can route around `ReadOnlyExecutor` via `client._executor._inner`, undetected by tests
-- **Files:** `src/clockify_mcp/workflows/*` (capability), `src/clockify/client.py` (`_executor` exposure), `tests/mcp/test_workflows.py` (missing tripwire).
-- **Proof:** mutant 7 — a workflow edited to call `client._executor._inner.execute(TAGS_CREATE, ...)` issued a real `POST /workspaces/w-test/tags` against the recording backend while all 8 workflow tests passed.
-- **Invariant violated:** the safety plan's requirement that a workflow sub-call bypass be caught by tests before any mutation reaches the transport.
-- **Consequence:** internal-only — exploiting it requires editing repository source; no external input can reach the inner executor. The public boundary holds (`test_workflows_cannot_mutate` passes on unmutated code). It is a tripwire gap, not a runtime hole in the shipped server.
-- **Smallest repair:** a workflow-level invariant test that runs every workflow against a recording backend and asserts zero mutating-verb requests; optionally stop handing workflows a client whose private `_executor` wraps a write-capable inner executor.
-- **Regression test:** the new invariant test must fail under mutant 7.
-- **False-positive rejection:** confirmed the mutated call actually reached MockTransport (request recorded) before concluding the tests missed it.
+### F-B — LOW — contract surface test silently degrades to SKIP without sibling evidence
 
-### F4 — LOW · `"."`/`".."` path arguments survive `render_path` (same-service endpoint retargeting)
-- **Files:** `src/clockify/_transport/encode.py:50` (path quoting; non-empty check at :44-47).
-- **Proof:** `uv run python -c "from clockify._transport.encode import render_path; from clockify.operations.registry import BY_ID; print(render_path(BY_ID['getWorkspacesWorkspaceIdTags'], {'workspaceId': '..'}))"` → `/workspaces/../tags`; httpx normalizes dot segments, so the request targets a different path on the same service, which still passes `validate_destination`.
-- **Invariant violated:** compiled requests must target exactly the operation's declared endpoint.
-- **Consequence:** bounded — `/` is percent-encoded so only the literals `"."`/`".."` escape; same host only; in the MCP only reads are reachable. A model-supplied id of `".."` could silently hit a different read endpoint; direct SDK use could retarget within the service.
-- **Smallest repair:** reject path-arg values equal to `"."` or `".."` next to the existing non-empty check; one unit test.
-- **Regression test:** `render_path(op, {"workspaceId": ".."})` must raise; fails before the repair.
-- **False-positive rejection:** verified `quote(value, safe="")` does encode `/` (`"a/b"` → `a%2Fb`), so full traversal strings are already blocked; only the two dot literals escape.
+- **Files:** `tests/contract/test_complete_surface.py:85`.
+- **Proof:** in a Git worktree placed outside `addons-me`, the suite reports
+  "SKIPPED … corrected OpenAPI evidence not present" and still exits green
+  (420 passed, 1 skipped). A release gate run from any checkout that lacks
+  `../clockify-ts-sdk` loses this reconciliation without failing.
+- **Violated invariant:** master-plan gate discipline — completeness evidence
+  should not silently disappear from a green run.
+- **Consequence:** low; the check did run in the canonical checkout during this
+  audit and passed, and this report reconciles the counts independently.
+- **Smallest repair:** make the skip conditional on an explicit opt-out
+  (e.g. env var), or fail when the evidence path is absent and the run is not
+  explicitly marked evidence-less.
+- **Regression test:** run the suite from a path without the sibling and assert
+  non-zero exit unless the opt-out is set.
+- **False-positive checks:** verified the test executes (not skipped) in the
+  main checkout.
 
-### F5 — LOW · Python 3.14 `inspect.signature()` fails on 12 resource methods (PEP 649 + builtin shadowing)
-- **Files:** e.g. `src/clockify/resources/invoice_payments.py:57`; 12 methods across approvals, clients, invoice_payments, invoices, projects, tags, tasks, time_off_policies, user_groups, users (`filter`, `grant_manager_role`), workspaces.
-- **Proof:** under a 3.14 interpreter, `inspect.signature(client.tags.list)` raises `TypeError: 'function' object is not subscriptable` — deferred annotation `-> list[TagDto]` evaluates in class scope where a sibling method named `list` shadows the builtin.
-- **Invariant violated:** none of the plan's hard invariants; runtime annotation introspection only. Calls, pyright, and MCP tool schemas (standalone functions) are unaffected — the 3.14 wheel smoke and full suite pass.
-- **Consequence:** third-party tooling doing runtime introspection on 3.14 breaks on those 12 bound methods.
-- **Smallest repair:** quote the affected return annotations (or module-level `ListOfX` aliases as already used elsewhere in the repo).
-- **Regression test:** a unit test calling `inspect.signature` on all 168 public methods; fails on 3.14 before the repair.
-- **False-positive rejection:** reproduced on the project's own 3.14 venv; confirmed normal invocation of the same methods works.
+### F-C — LOW (informational) — completion claim references a superseded commit; dangling objects remain locally
 
-No BLOCKER and no HIGH-severity runtime defect was found. All other attacked
-surfaces — listed in sections 3–7 — were confirmed intact with executable evidence.
+- The claim names `972fd5e`; HEAD is `87e1553` with substantive remediation in
+  between. Any release notes must reference HEAD.
+- 2 unreachable commits + associated trees/blobs exist in the local object
+  store (source-only, no secrets — see §1). They are local-only and will age
+  out with `git gc`; nothing reachable or pushable contains them. No repair
+  required; `git gc --prune=now` optional.
 
-## 9. Cleanup
+## 8. Maintainability
 
-Disposable mutant worktree removed and pruned (`git worktree list` shows only the main
-worktree, clean at `972fd5e`). Temporary venvs/probe scripts lived in the session
-scratchpad and `/tmp` scratch files were deleted. No production source, no Git ref, and
-no sibling-repository file was modified by this audit. This file is the audit's only
-persistent artifact.
+- No runtime public generation, no `__getattr__` surface, no decorator
+  scanning, no import-time registration side effects (verified in
+  `tools/__init__.py` and by the `sys.modules` probe).
+- Operation truth lives once, in 21 static domain modules aggregated by
+  `operations/registry.py`; models are static committed Pydantic v2.
+- Adding an ordinary endpoint follows a locatable path: manifest record →
+  domain operation module → resource method → focused test; naming makes each
+  hop greppable without chat history.
+- No generic CRUD framework, no unused abstraction observed; the one
+  intentionally dormant subsystem (`writes/`) is clearly bounded and
+  documented as unregistered.
 
----
+## 9. Cleanup attestation
 
-## Appendix: remediation wave (2026-08-12, same day)
+The disposable mutant worktree, both wheel-test venvs, and the stdio probe
+script were removed. `git worktree list` shows only the main worktree;
+`git status` is clean. No production source, ref, or remote was modified.
+This file is the single persistent artifact of the audit.
 
-All five findings were re-reproduced before any code change, then repaired
-test-first. Suite grew 407 → 421 (all green); every gate re-run; wheel
-re-verified on clean Python 3.11 and 3.14 with real-stdio proof (65 tools,
-5 workflows, zero write-hinted tools, controlled `clockify_status` read
-`is_error=False`); live suite 6/6 with an independent zero-residue sweep
-(0 `py115*` tags, 0 projects). Public MCP write registration remains zero; the
-wave-1 tag-write adapter stays unregistered.
+## 10. Remediation appendix (2026-08-12, same day; release-candidate commit = direct successor of `87e1553`)
 
-### F1 — CONFIRMED (local-only) · owner actions recorded
-- **Reproduced:** reflog-only commit `63dd88c` still holds `.mcp.json`.
-  Re-verified: zero tracked files, zero reachable commits (`rev-list --all`
-  tree scan), zero refs, wheel and sdist byte-listed clean.
-- **Fix:** none in-repo (Git metadata is not repository content, and destructive
-  `reflog expire`/`gc` was not run against a tree with active uncommitted work).
-- **Owner actions (required, not automatable here):**
-  1. `git reflog expire --expire-unreachable=now --all && git gc --prune=now`
-     on a clean tree; re-run the reflog scan (must print nothing).
-  2. Rotate the sacrificial `CLOCKIFY_API_KEY` in the Clockify UI.
-- **Proof of scope:** the key cannot leave the machine via clone/push; only a
-  wholesale `.git` copy carries it.
+Findings F-A and F-B were remediated test-first in one focused commit. F-C is
+resolved by referencing that commit (this repository's HEAD after remediation)
+as the release candidate in `IMPLEMENTATION_STATUS.md`.
 
-### F2 — CONFIRMED (test gap + one real hole) · repaired
-- **Reproduced:** no test referenced `derive_key`; mutant 5b (workspace_id
-  dropped from the HMAC material) passed the full suite. Additionally
-  confirmed the review's note that `consume()` never verified workspace.
-- **Test first:** `tests/mcp/writes/test_workspace_binding.py` — key
-  derivation (`derive_key` differs by workspace only), stored-record lookup
-  (two same-argument prepares in workspaces A/B yield distinct keys+nonces,
-  independently consumable; same-workspace reuse still returns one nonce),
-  and consume-time verification (tampered `workspace_id` on a valid
-  `PreparedWrite` must raise `ConfirmationMismatch`).
-- **Red proof:** consume-time test failed on pre-fix code (`DID NOT RAISE`);
-  in a disposable worktree under mutant 5b, the derivation and prepare tests
-  failed (2 failed). Worktree removed and pruned.
-- **Fix:** `InMemoryNonceStore.consume` now takes `workspace_id` and checks it
-  against the stored record alongside principal/tool/arguments/plan digests;
-  `WriteGate.consume` passes `prepared.workspace_id`.
+### F-A remediation — identity-pinning regression test
 
-### F3 — CONFIRMED · repaired
-- **Fix:** new `clockify_mcp/read_capability.py` — `WorkflowReadClient`, a
-  slotted façade exposing exactly the reads the five workflows use
-  (users.me/list, workspaces.get, time_entries.list_in_progress/list_for_user,
-  projects.list/get, tags.list, reports.weekly, `workspace_id`). All five
-  workflow implementations now accept it; `register_workflows` builds it once
-  and never hands workflows the `ClockifyClient`. No `raw`, no `_executor`,
-  no general dispatch on its ordinary API. `ReadOnlyExecutor` remains the
-  final runtime boundary; this is capability discipline plus a tripwire, not
-  a claim that Python resists malicious source edits.
-- **Tests:** `tests/mcp/test_workflow_capability.py` — (1) a spy proves the
-  registered tools pass a `WorkflowReadClient`, not a `ClockifyClient`;
-  (2) surface assertions (slots-only, no raw/executor/mutators anywhere);
-  (3) a mutation reaching `ReadOnlyExecutor` raises
-  `ClockifyReadOnlyViolation` with zero HTTP dispatched; (4) an invariant
-  tripwire runs all five workflows end-to-end and asserts every dispatched
-  request is a read (GET or the POST weekly report). Existing 8 workflow
-  behavior tests unchanged and green.
-- **Mutant proof:** in a disposable worktree, mutant 7 re-attempted through
-  the new façade (`client.tags.list.__self__._executor._inner` → new
-  `TagsResource` → live POST). The tripwire test fails (1 failed). Worktree
-  removed and pruned.
+- New test:
+  `tests/mcp/writes/test_controlled_executor.py::test_sender_receives_stored_approved_step_by_identity`.
+  It builds a consumed permit, dispatches a caller-owned `WriteStep` that is
+  equal in every digested field (`==` and `request_digest` equality both
+  asserted), captures the object the sender received, and asserts by identity:
+  `received_step is permit.plan.steps[0]` and `received_step is not caller_step`.
+- **Pre-fix mutant proof:** in a disposable worktree at `87e1553` with its own
+  synced environment, the hand mutant
+  `await self._sender(approved_step)` → `await self._sender(step)` was applied
+  (mutant M4). The new test **failed** exactly on the identity assertion
+  (`assert received_step is permit.plan.steps[0]` → `AssertionError`); against
+  unmutated production code it passes. Worktree removed
+  (`git worktree list` → main only).
+- No mutation framework or new abstraction was added.
 
-### F4 — CONFIRMED · repaired
-- **Reproduced:** `render_path(op, {"workspaceId": ".."})` →
-  `/workspaces/../tags` (and `"."` likewise).
-- **Test first:** `tests/unit/transport/test_encode_paths.py` — `"."` and
-  `".."` rejected; a normal id renders; embedded slash stays percent-encoded
-  (`a/b` → `a%2Fb`, `../x` → `..%2Fx`); pre-encoded `%2e%2e` is re-quoted to
-  inert data; `"..."` remains a valid opaque id. Red: 2 failures pre-fix.
-- **Fix:** `render_path` rejects a complete path argument equal to `"."` or
-  `".."` with `ClockifyConfigurationError`, next to the existing non-empty
-  check — before URL construction, before HTTP. No policy framework added.
+### F-B remediation — evidence must not silently disappear
 
-### F5 — CONFIRMED · repaired
-- **Reproduced:** on Python 3.14, `inspect.signature()` raised
-  `TypeError: 'function' object is not subscriptable` on exactly the 12
-  reported methods (PEP 649 deferred annotations evaluating in class scope
-  where a sibling `list`/`filter` method shadows the builtin).
-- **Fix:** the affected signatures now use explicit `builtins.list[...]`
-  (with `import builtins`) in the 11 resource modules; nothing catches or
-  suppresses introspection errors.
-- **Contract test:** `tests/contract/test_signature_introspection.py`
-  introspects every public coroutine method across all 29 resource classes
-  and asserts the introspected set equals `BY_PUBLIC_METHOD` with exactly
-  168 methods. Run green on Python 3.11 (project venv) and Python 3.14
-  (clean venv against the source install; wheel separately smoke-verified).
+- `tests/contract/test_complete_surface.py` no longer uses
+  `skipif(not SPEC_PATH.exists())`. A small `evidence_gate()` decides:
+  evidence present → the reconciliation **runs**; evidence absent → the test
+  **fails** with an actionable message naming the evidence repository URL and
+  pinned commit `d7091a44a1b95d4918fa17a7f9b174bf668a9136`; evidence absent
+  with `CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE=1` set explicitly → **one
+  clearly explained skip**. `test_evidence_gate_states` pins all three states.
+- End-to-end proof (commands run during remediation):
+  - present: `uv run pytest -q tests/contract/test_complete_surface.py` →
+    10 passed (reconciliation executed).
+  - absent, no opt-out: the same test file run from a location whose sibling
+    path lacks the evidence repo → **1 failed** with the actionable message.
+  - absent, opt-out: same run with `CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE=1`
+    → **1 skipped**, reason explains the explicit opt-out.
+- `.github/workflows/ci.yml` now checks out the project and
+  `apet97/clockify-ts-sdk` at exactly the pinned commit
+  `d7091a44a1b95d4918fa17a7f9b174bf668a9136` as sibling directories; the
+  workflow never sets the opt-out variable.
 
-### Re-verification after the wave
-`uv sync --all-extras --dev`, `ruff check`, `ruff format --check` (246 files),
-`pyright` (0 errors), `pytest -q -m "not live"` (421 passed), `uv build`;
-clean-venv `wheel[mcp]` installs on 3.11 and 3.14 (`ClockifyClient` imports,
-`clockify-mcp --help` exit 0); installed executable over real stdio: 65 tools,
-5 workflows exactly once, zero `read_only_hint=False`, controlled read OK;
-live suite 6 passed, zero residue. Write readiness is NOT claimed: independent
-human review of `clockify_mcp/writes` and approval-UI evidence in two intended
-hosts remain external blockers.
+### Final release-proof commands (all green)
+
+- `uv sync --all-extras --dev`; `uv run ruff check .`;
+  `uv run ruff format --check .`; `uv run pyright` (0 errors);
+  `uv run pytest -q -m "not live"` → **423 passed, 6 deselected**; `uv build`.
+- Exact wheel `clockify_python_115-0.1.0-py3-none-any.whl[mcp]` installed into
+  clean uv venvs on Python **3.11, 3.13, 3.14**: `ClockifyClient` import and
+  `clockify-mcp --help` pass in each.
+- Python 3.14: `tests/contract/test_signature_introspection.py` (the PEP 649
+  regression contract) run against the **installed** artifact → passed.
+- Installed 3.11 artifact spawned over real stdio: **65 tools** (60 raw reads +
+  exactly the five workflows `clockify_status`, `clockify_workspace_overview`,
+  `clockify_review_day`, `clockify_review_week`, `clockify_doctor`), **zero**
+  write-suffixed tools, one controlled read (`clockify_status`) returned live
+  workspace/user/running-entry data, stdout protocol-only.
+- Sibling `../clockify-ts-sdk` unchanged (clean, HEAD `d7091a4`); all
+  worktrees, probe scripts, and smoke venvs removed.
+
+MCP write tools remain **unregistered**; nothing in this remediation claims
+public write readiness. External blockers (independent human review of
+`clockify_mcp/writes`, two real-host approval-UI proofs) stand.
