@@ -24,8 +24,9 @@ def build_read_only_server(
     client: ClockifyClient | None = None,
 ) -> MCPServer:
     """Construct the read-only server. `client` injection exists for tests."""
+    resolved_config = config or ServerConfig.from_env()
     if client is None:
-        client = build_read_only_client(config or ServerConfig.from_env())
+        client = build_read_only_client(resolved_config)
     server = MCPServer(
         name="clockify",
         instructions=(
@@ -36,7 +37,7 @@ def build_read_only_server(
         log_level="WARNING",
     )
     register_read_tools(server, client)
-    register_workflows(server, client)
+    register_workflows(server, client, resolved_config)
     return server
 
 
