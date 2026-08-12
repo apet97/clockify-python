@@ -75,9 +75,9 @@ host approval-UI proofs).
 - Pydantic seams proven: alias round-trip incl. `page-size`, extra forbid/allow with
   `model_extra`, RootModel arrays, None-vs-unset serialization split.
 
-## Last known green commands (2026-08-12)
+## Last known green commands (2026-08-12, round-3 re-review)
 - uv run ruff check . / ruff format --check . / pyright  → clean
-- uv run pytest -q -m "not live"  → 397 passed
+- uv run pytest -q -m "not live"  → 425 passed
 - uv run pytest -q -m live  → 5 passed (see Live-test runs)
 - uv build; wheel[mcp] install into clean venvs (3.14 + 3.11): SDK import,
   `clockify-mcp --help`, and real stdio list_tools (65) all green.
@@ -121,9 +121,15 @@ host approval-UI proofs).
   `CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE=1` opt-out; CI clones the evidence
   repo at the pinned commit) remediated test-first in the release-candidate
   commit. Suite 421 → 423 green. See `ADVERSARIAL_REVIEW.md` §10 for proofs.
-- **Release candidate: the current `main` HEAD — the single remediation commit
-  directly succeeding `87e1553` (superseding both `972fd5e` and `87e1553` as
-  release references).** Release-proof at that commit: all gates green; wheel
+- Round 3 (full-repo re-review of 232f06a, two fresh reviewers): R3-1 HIGH
+  (multipart list fields sent as Python repr — `changeFields` now expands to
+  repeated parts), R3-2 MEDIUM (bytes in model `file` field now fails closed
+  pre-network with `Upload` guidance), R3-4 LOW (tombstone ttl from consume),
+  R3-5 LOW (read_capability docstring honesty). All test-first. Suite
+  423 → 425. See `ADVERSARIAL_REVIEW.md` §11.
+- **Release candidate: the current `main` HEAD — the round-3 remediation
+  commit directly succeeding `232f06a` (superseding earlier release
+  references).** Release-proof at that commit: all gates green; wheel
   `[mcp]` installed into clean 3.11/3.13/3.14 venvs (import + `clockify-mcp
   --help`); 3.14 signature-introspection contract green on the installed
   artifact; installed-3.11 real-stdio session: 65 tools = 60 raw reads + 5

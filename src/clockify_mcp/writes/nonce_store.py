@@ -217,7 +217,10 @@ class InMemoryNonceStore:
                 )
             del self._pending[key]
             self._by_nonce.pop(nonce, None)
-            self._tombstones[nonce] = (principal_id, record.expires_at)
+            # Tombstone lives a full ttl from consumption (not the original
+            # expires_at) so a replay of a late consume still reports
+            # "already used" instead of degrading to "not found".
+            self._tombstones[nonce] = (principal_id, self._now() + self._ttl)
             return ExecutionPermit(
                 permit_id=secrets.token_urlsafe(16),
                 principal_id=principal_id,

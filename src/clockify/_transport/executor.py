@@ -164,7 +164,7 @@ class HttpExecutor:
             # Multipart operation. Form fields ride as filename-less parts so the
             # encoding stays multipart/form-data even with no file attached.
             files_arg = list(compiled.files)
-            for field_name, field_value in (compiled.form_data or {}).items():
+            for field_name, field_value in compiled.form_data or ():
                 files_arg.append((field_name, (None, field_value)))
         return await self._client.request(
             compiled.method,

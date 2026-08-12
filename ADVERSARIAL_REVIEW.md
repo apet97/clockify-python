@@ -301,3 +301,61 @@ as the release candidate in `IMPLEMENTATION_STATUS.md`.
 MCP write tools remain **unregistered**; nothing in this remediation claims
 public write readiness. External blockers (independent human review of
 `clockify_mcp/writes`, two real-host approval-UI proofs) stand.
+
+## 11. Full-repository re-review round 3 (2026-08-12, reviewed commit 232f06a)
+
+Two fresh-context read-only reviewers (SDK/transport/packaging; MCP
+boundaries/write-safety) attacked the whole repository with no repair
+rationale provided. All BLOCKER/HIGH/MEDIUM candidates were reproduced on the
+main thread before any production change; every fix landed test-first (red
+proof captured).
+
+Confirmed and repaired:
+- **R3-1 HIGH** — multipart list body fields serialized as a Python repr:
+  `expenses.update` sent `changeFields` as `"['USER', 'DATE']"` instead of one
+  repeated part per item (TS evidence:
+  `wrapper/tests/expense-update-multipart.test.ts`). Fix: multipart form is
+  now ordered `(key, value)` pairs; lists expand to repeated parts
+  (`src/clockify/_transport/encode.py`, executor pass-through). Regression:
+  strengthened `test_update_multipart_sends_change_fields` pins part counts
+  and exact bare values (also closes R3-3 LOW, the name-only assertion gap
+  that let R3-1 ship).
+- **R3-2 MEDIUM** — `ExpenseCreateRequest.file` / `ExpenseUpdateRequest.file`
+  (`bytes`) were declared but unusable: json-mode dump crashed with
+  `UnicodeDecodeError` on real binary; UTF-8-decodable bytes would have become
+  a colliding text part. Fix: multipart bodies dump in python mode and bytes
+  body fields fail closed pre-network with guidance to use `file=Upload(...)`.
+  Regression: `test_bytes_in_model_file_field_rejected_before_http`.
+- **R3-4 LOW** — nonce tombstone expired at the *original* permit
+  `expires_at`, so replay of a late consume degraded from
+  `ConfirmationAlreadyUsed` to `ConfirmationNotFound` (single-use itself never
+  broken). Fix: tombstone now lives a full ttl from consumption
+  (`nonce_store.py`). Regression:
+  `test_replay_after_late_consume_reports_already_used`.
+- **R3-5 LOW (docs)** — `read_capability.py` claimed "no executor attribute";
+  bound methods expose `__self__._executor` (and `._inner`). Docstring
+  corrected to state the reach-through honestly. Severing it was rejected as
+  overengineering: the module's stated trust model is capability discipline,
+  not a sandbox, and the tripwire tests stand. Reviewer note kept for future
+  write waves: preview redaction is builder convention (W-13), not structural
+  enforcement — re-check per adapter.
+
+Rejected / no-action:
+- Live-suite 401s during baseline were a revoked stale `CLOCKIFY_API_KEY`
+  inherited from the operator shell profile shadowing `.env` — environment,
+  not product; suite is 6/6 green with zero residue when `.env` is sourced.
+- Everything else both reviewers checked (counts 168/29/168/62/106,
+  full manifest↔spec parity both directions with 0 mismatches, transport
+  invariants, structurally read-only server, permit/nonce/identity-dispatch,
+  evidence gate, packaging, secret sweep of full history) was found sound.
+
+Post-repair proof at the release-candidate commit (direct successor of
+232f06a): ruff/format/pyright clean; `pytest -m "not live"` → 425 passed;
+`pytest -m live` → 6 passed, zero residue; fresh wheel installed into clean
+3.11 and 3.14 venvs (import, `clockify-mcp --help`, 3.14 introspection of all
+168 methods against the installed artifact); installed-3.11 real-stdio
+session: 65 tools = 60 raw + exactly the 5 workflows, zero writes, controlled
+read green, protocol-only stdout. Sibling `../clockify-ts-sdk` untouched at
+`d7091a4`. No push, publish, or tag.
+
+**Verdict: READ-ONLY RELEASE READY — EXTERNAL WRITE BLOCKERS REMAIN.**

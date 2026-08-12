@@ -24,7 +24,7 @@ class CompiledRequest:
     url: str
     params: tuple[tuple[str, str], ...] = ()
     json_body: Any = None
-    form_data: dict[str, str] | None = None
+    form_data: tuple[tuple[str, str], ...] | None = None
     files: tuple[MultipartFile, ...] = ()
     headers: dict[str, str] = field(default_factory=dict)
 
@@ -98,6 +98,10 @@ def serialize_body(operation: Operation, body: Any) -> Any:
         return None
     if isinstance(body, BaseModel):
         # Aliases give exact wire keys; explicit None survives, unset is omitted.
+        # Multipart bodies dump in python mode: their fields become scalar form
+        # parts (json mode would crash on binary bytes before we can reject).
+        if operation.request_encoding is RequestEncoding.MULTIPART:
+            return body.model_dump(by_alias=True, exclude_unset=True)
         return body.model_dump(by_alias=True, exclude_unset=True, mode="json")
     if isinstance(body, (dict, list)):
         return body
@@ -139,7 +143,7 @@ def compile_request(
     file_parts = serialize_files(operation, files)
 
     if operation.request_encoding is RequestEncoding.MULTIPART:
-        form: dict[str, str] = {}
+        form: list[tuple[str, str]] = []
         if serialized_body:
             if not isinstance(serialized_body, dict):
                 raise ClockifyConfigurationError(
@@ -148,12 +152,23 @@ def compile_request(
             for key, value in serialized_body.items():
                 if value is None:
                     continue
-                form[key] = _scalar(value)
+                if isinstance(value, bytes):
+                    raise ClockifyConfigurationError(
+                        f"{operation.operation_id}: binary content must be sent"
+                        f" via the file=Upload(...) parameter, not the body"
+                        f" field {key!r}"
+                    )
+                # A list field becomes one repeated part per item (evidence:
+                # updateExpense changeFields in the corrected spec / TS wrapper).
+                if isinstance(value, (list, tuple)):
+                    form.extend((key, _scalar(item)) for item in value)
+                else:
+                    form.append((key, _scalar(value)))
         return CompiledRequest(
             method=operation.http_method,
             url=base_url + path,
             params=params,
-            form_data=form or None,
+            form_data=tuple(form) or None,
             files=file_parts,
             headers=headers,
         )

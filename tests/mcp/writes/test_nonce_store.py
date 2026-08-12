@@ -181,6 +181,20 @@ async def test_restart_loses_all_pending_state() -> None:
         await fresh_store.consume(**consume_kwargs(prepared))
 
 
+async def test_replay_after_late_consume_reports_already_used() -> None:
+    # A nonce consumed just before its own expiry must keep its tombstone for
+    # a full ttl after consumption, so a prompt replay still says "already
+    # used" rather than degrading to "not found".
+    clock = Clock()
+    store = InMemoryNonceStore(ttl=300.0, clock=clock)
+    prepared = await store.get_or_issue(**issue_kwargs(make_plan()))
+    clock.now += 299.0
+    await store.consume(**consume_kwargs(prepared))
+    clock.now += 2.0  # past the original expires_at, well within ttl of consume
+    with pytest.raises(ConfirmationAlreadyUsed):
+        await store.consume(**consume_kwargs(prepared))
+
+
 async def test_tombstone_expires() -> None:
     clock = Clock()
     store = InMemoryNonceStore(ttl=300.0, clock=clock)

@@ -117,7 +117,7 @@ async def test_update_multipart_sends_change_fields() -> None:
         {
             "amount": 20,
             "categoryId": "c1",
-            "changeFields": ["AMOUNT"],
+            "changeFields": ["AMOUNT", "NOTES"],
             "date": "2026-08-12",
             "userId": "u1",
         },
@@ -132,5 +132,34 @@ async def test_update_multipart_sends_change_fields() -> None:
     # Form fields ride as filename-less multipart parts even with no file attached.
     assert capture.request.headers["Content-Type"].startswith("multipart/form-data")
     body = capture.request.content
-    assert b'name="changeFields"' in body
-    assert b'name="amount"' in body and b"20" in body
+    # A list field must become one repeated part per item with the bare item
+    # value — never a Python-repr string (evidence:
+    # clockify-ts-sdk wrapper/tests/expense-update-multipart.test.ts).
+    assert body.count(b'name="changeFields"') == 2
+    assert b"\r\nAMOUNT\r\n" in body
+    assert b"\r\nNOTES\r\n" in body
+    assert b"[" not in body and b"'" not in body
+    assert b'name="amount"' in body and b"\r\n20.0\r\n" in body
+
+
+async def test_bytes_in_model_file_field_rejected_before_http() -> None:
+    # The receipt goes through the `file=Upload(...)` parameter; raw bytes in
+    # the model's `file` field must fail closed pre-network with guidance,
+    # not crash in JSON serialization or collide with the real file part.
+    import pytest
+
+    from clockify.errors import ClockifyConfigurationError
+
+    client, capture = make_client(json=EXPENSE_JSON)
+    with pytest.raises(ClockifyConfigurationError, match="Upload"):
+        await client.expenses.create(
+            {
+                "amount": 1.0,
+                "categoryId": "c1",
+                "date": "2026-08-12",
+                "userId": "u1",
+                "file": b"\x89PNG",
+            },
+            workspace_id="w1",
+        )
+    assert not capture.requests  # nothing reached the wire

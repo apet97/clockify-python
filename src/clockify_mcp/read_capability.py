@@ -2,10 +2,12 @@
 
 Workflow implementations receive a `WorkflowReadClient`, never a full
 `ClockifyClient`. Its ordinary API exposes only the read calls the workflows
-use: no `raw.call`, no mutating resource methods, no executor attribute, and
-no general dispatch. This narrows the workflow layer's authority; the
-`ReadOnlyExecutor` wrapped inside the server's client remains the final
-runtime enforcement boundary for anything that slips past it. Python cannot
+use: no `raw.call`, no mutating resource methods, no direct executor
+attribute, and no general dispatch. The exposed attributes are bound resource
+methods, so private reach-through (`method.__self__._executor`, and its
+`_inner`) is still possible for trusted in-process code; only ordinary use is
+narrowed. The `ReadOnlyExecutor` wrapped inside the server's client remains
+the final runtime enforcement boundary for ordinary dispatch. Python cannot
 stop deliberate rewriting of trusted package source — this is a capability
 discipline plus a tested tripwire, not a sandbox.
 """
