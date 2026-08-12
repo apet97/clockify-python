@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "clockify-python-115"
 version = "0.1.0"
-description = "Complete async Clockify SDK and MCP server for Python"
+description = "Independent async Clockify SDK and read-only MCP server for Python"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
 
@@ -43,7 +44,22 @@ dev = [
 packages = ["src/clockify", "src/clockify_mcp"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "README.md", "LICENSE", "SECURITY.md"]
+include = [
+    "src",
+    "tests",
+    "scripts",
+    "examples",
+    "docs",
+    ".github",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "NOTICE.md",
+    "LICENSE",
+    "pyproject.toml",
+    "uv.lock",
+]
 
 [tool.ruff]
 target-version = "py311"
@@ -59,7 +75,7 @@ ignore = [
 
 [tool.pyright]
 pythonVersion = "3.11"
-include = ["src", "tests", "scripts"]
+include = ["src", "tests", "scripts", "examples"]
 typeCheckingMode = "strict"
 reportUnknownMemberType = false
 reportUnknownArgumentType = false
