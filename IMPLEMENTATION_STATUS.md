@@ -112,6 +112,14 @@ host approval-UI proofs).
   values plain strings → importer STR_UNION_REFS + regression test (f510d21).
 - See "Design decisions worth knowing" above for structural choices.
 
+## Adversarial-review remediation (2026-08-12)
+- HEAD `6c0d359` — findings F1-F5 from `ADVERSARIAL_REVIEW.md` remediated
+  test-first (see its remediation appendix for disposition/test/fix/proof).
+  Suite 407 → 421 green; all gates re-run; clean 3.11/3.14 wheel installs;
+  real-stdio 65 tools, zero write-hinted; live suite 6/6, zero residue.
+- F1 owner actions still open (not automatable in-repo): reflog
+  expire + gc on a clean tree, then rotate the sacrificial CLOCKIFY_API_KEY.
+
 ## Next exact action
 Nothing pending in-code. Remaining work is external: (1) independent human
 adversarial review of clockify_mcp/writes; (2) approval-UI evidence on two real
