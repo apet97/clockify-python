@@ -15,11 +15,28 @@ Distribution `clockify-python-115`, console `clockify-mcp`.
 - Initial tracked status: clean (no tracked modifications).
 
 ## Current phase
-Phase 4 — all 168 explicit SDK methods + public wiring suite.
-Acceptance target: every manifest method callable; 168-case wiring tests through
-MockTransport assert op id, host, method, path, query, body encoding, response adapter.
+Phase 8 — MCP write-safety core (no registered writes).
+Acceptance target: every safety invariant/adversarial case in
+docs/port/MCP_WRITE_SAFETY_PLAN.md proven against a fake write; fresh-context
+reviewer subagent report at docs/mcp-write-safety-review.md.
+
+## Design decisions worth knowing (deviations documented)
+- ReadOnlyExecutor lives in clockify._transport.executor (re-exported by
+  clockify_mcp.read_executor) so the SDK enforces it without importing MCP code.
+- MCP raw read tools dispatch via client.raw.call (registered op IDs only, same
+  ReadOnlyExecutor) instead of resource methods, so ReadResult can carry
+  request_id + Last-Page; workflows use resource methods.
+- Multipart ops with no file send form fields as filename-less multipart parts
+  (updateExpense stays multipart/form-data — proven in wiring tests).
+- Retry policy lives in config.py + executor (no separate retry.py).
 
 ## Completed phases
+- Phases 4-5 (adb992e): 29 resource modules / 168 explicit methods, 168-op wiring suite
+  (tests/contract/wiring/, COVERED completeness test), pagination.py + money.py + deviation
+  regressions (tests/contract/test_known_deviations.py).
+- Phases 6-7 (95b2fb8): read MCP — 60 raw tools (27 domain modules under
+  clockify_mcp/tools/), 5 workflows, ReadOnlyExecutor boundary tests, in-memory MCP tests,
+  real stdio smoke (65 tools listed), shared-report JSON/CSV-only pre-network rejection.
 - Phase 1 skeleton (commit 4f81dcd): pyproject/uv/ruff/pyright/pytest/ci, wheel smoke green.
 - Phase 2 models (c317786 + tests): importer `scripts/import_openapi.py` (fail-closed),
   339 roots → 30 domain modules + explicit __init__; request extra=forbid /
@@ -73,11 +90,11 @@ Starting Phase 1 skeleton.
 ## Material deviations from blueprint
 (none)
 
-## Next exact action (when resuming mid-Phase 4)
-Six subagents are writing src/clockify/resources/*.py + tests/contract/wiring/*.py
-(exemplar: tags). When all 29 exist: run full gates, fix failures, verify
-tests/contract/test_public_method_wiring.py (168 coverage), commit, then Phase 5
-deviation tests (pagination.py/money.py + tests already in place).
+## Next exact action
+Phase 8: implement clockify_mcp/writes/ per MCP_WRITE_SAFETY_PLAN.md (read its
+Components/Data contracts/Nonce store/State machine/Adversarial catalogue sections),
+prove with a fake write executor + adversarial tests, then fresh-context review at
+docs/mcp-write-safety-review.md. No write tool registration.
 
 ## (superseded)
 Create Phase 1 skeleton: pyproject.toml (hatchling, dist `clockify-python-115`,
