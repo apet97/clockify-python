@@ -1,0 +1,18 @@
+{
+  "resource": "invoice_settings",
+  "operations": {
+    "getInvoiceSettings": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "InvoiceSettingsResponse", "items_path": null},
+      "notes": []
+    },
+    "updateInvoiceSettings": {
+      "request_model": "InvoiceSettingsRequest",
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "PUT with proven replacement risk; workspace-wide configuration blast radius.",
+        "Success is 200 with empty body."
+      ]
+    }
+  }
+}

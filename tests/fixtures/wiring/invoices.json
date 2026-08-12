@@ -1,0 +1,68 @@
+{
+  "resource": "invoices",
+  "operations": {
+    "addInvoice": {
+      "request_model": "InvoiceCreateRequest",
+      "response": {"shape": "model", "model": "InvoiceCreateResponse", "items_path": null},
+      "notes": [
+        "POST accepts only clientId/currency/dueDate/issuedDate/number; note and subject are silently dropped — create the draft first, then set them via updateInvoice.",
+        "Invoice money fields are minor units (cents) on the wire; no currency scaling applied by transport."
+      ]
+    },
+    "deleteInvoice": {
+      "request_model": null,
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": []
+    },
+    "duplicateInvoice": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "InvoiceDtoFull", "items_path": null},
+      "notes": [
+        "Invoice item unitPrice is minor units x100 (hundredths of a cent); amount = unitPrice * quantity / 100."
+      ]
+    },
+    "exportInvoice": {
+      "request_model": null,
+      "response": {"shape": "bytes", "model": null, "items_path": null},
+      "notes": [
+        "Binary invoice export; SDK-only read — no context-safe raw MCP representation in v1.",
+        "userLocale query parameter is required by live Clockify; default en-US."
+      ]
+    },
+    "filterInvoices": {
+      "request_model": "InvoiceFilterRequest",
+      "response": {"shape": "list", "model": "InvoiceInfoListResponse", "items_path": ["invoices"]},
+      "notes": [
+        "Non-mutating POST — a read that carries its filter in a JSON body."
+      ]
+    },
+    "getInvoiceById": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "InvoiceDtoFull", "items_path": null},
+      "notes": [
+        "GET on a deleted or never-existing invoice id returns 400 code 501 (Invoice doesn't belong to Workspace), never 404."
+      ]
+    },
+    "getWorkspaceInvoices": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "InvoiceListResponse", "items_path": ["invoices"]},
+      "notes": [
+        "Last-Page response header is authoritative for pagination."
+      ]
+    },
+    "updateInvoice": {
+      "request_model": "UpdateInvoiceRequest",
+      "response": {"shape": "model", "model": "InvoiceDtoFull", "items_path": null},
+      "notes": [
+        "PUT replaces the whole document — a sparse body drops every omitted field (note, subject, billFrom, clientAddress, ...). Runtime GET-then-PUT preservation is required.",
+        "Asymmetric tax/discount: GET returns discount/tax/tax2 as x100-scaled values (10% -> 1000), but the PUT body wants discountPercent/taxPercent/tax2Percent as plain percents. Copying GET names verbatim silently zeroes tax/discount.",
+        "Invoice money fields are minor units (cents); item unitPrice is minor x100."
+      ]
+    },
+    "changeInvoiceStatus": {
+      "request_model": "InvoiceStatusRequest",
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": []
+    }
+  }
+}

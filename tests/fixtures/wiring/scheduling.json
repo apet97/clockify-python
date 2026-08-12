@@ -1,0 +1,87 @@
+{
+  "resource": "scheduling",
+  "operations": {
+    "changeRecurringPeriod": {
+      "request_model": "ChangeRecurringPeriodRequest",
+      "response": {"shape": "list", "model": "SchedulingAssignment", "items_path": null},
+      "notes": [
+        "UNRESOLVED: PUT omission behavior unproven; treat as potential replacement (conservative)."
+      ]
+    },
+    "copyScheduledAssignment": {
+      "request_model": "CopyAssignmentRequest",
+      "response": {"shape": "list", "model": "SchedulingAssignment", "items_path": null},
+      "notes": []
+    },
+    "createRecurringAssignment": {
+      "request_model": "CreateRecurringAssignmentRequest",
+      "response": {"shape": "list", "model": "SchedulingAssignment", "items_path": null},
+      "notes": [
+        "201 returns a bare ARRAY of SchedulingAssignment (one per occurrence; one-off has a single element); read element [0] for the created-entity id.",
+        "This POST .../recurring is the live create path that replaced the dead POST /scheduling/assignments."
+      ]
+    },
+    "deleteRecurringAssignment": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "SchedulingAssignment", "items_path": null},
+      "notes": [
+        "Optional seriesUpdateOption query selects series scope."
+      ]
+    },
+    "getUsersCapacityTotals": {
+      "request_model": "UserCapacityTotalsRequest",
+      "response": {"shape": "list", "model": "UserCapacityTotal", "items_path": null},
+      "notes": [
+        "Non-mutating POST search."
+      ]
+    },
+    "getScheduledAssignmentsOnProject": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "ProjectAssignmentsTotal", "items_path": null},
+      "notes": [
+        "start and end query params are REQUIRED by live Clockify; the GET 400s without them.",
+        "Single-project totals use this GET; the all-projects POST body has no projectId field (silently dropped)."
+      ]
+    },
+    "getUserCapacityTotal": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "UserCapacityTotal", "items_path": null},
+      "notes": [
+        "start and end query params are required (yyyy-MM-ddThh:mm:ssZ).",
+        "Paginated object envelope; item array totalHoursPerDay."
+      ]
+    },
+    "getAllSchedulingAssignments": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "AssignmentListItem", "items_path": null},
+      "notes": [
+        "start and end query params are required.",
+        "Last-Page response header is authoritative for pagination (stamped from live probes)."
+      ]
+    },
+    "getScheduledAssignmentsPerProject": {
+      "request_model": "ProjectTotalsRequest",
+      "response": {"shape": "list", "model": "ProjectAssignmentsTotal", "items_path": null},
+      "notes": [
+        "Non-mutating POST search; body REQUIRES start and end (400 without).",
+        "Body whitelist is camelCase only [end, page, pageSize, search, start, statusFilter]; kebab page-size is silently ignored.",
+        "Body has no projectId field; a sent projectId is silently dropped and ALL projects are returned — use the single-project GET instead."
+      ]
+    },
+    "publishAssignments": {
+      "request_model": "PublishAssignmentsRequest",
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "Range-scoped multi-entity publish; 200 with empty body.",
+        "UNRESOLVED: PUT omission behavior unproven; label as potential replacement (conservative)."
+      ]
+    },
+    "updateRecurringAssignment": {
+      "request_model": "UpdateRecurringAssignmentRequest",
+      "response": {"shape": "list", "model": "SchedulingAssignment", "items_path": null},
+      "notes": [
+        "PATCH partial update; response is a bare array of SchedulingAssignment."
+      ]
+    }
+  }
+}

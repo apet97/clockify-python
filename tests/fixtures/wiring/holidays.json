@@ -1,0 +1,43 @@
+{
+  "resource": "holidays",
+  "operations": {
+    "createHoliday": {
+      "request_model": "CreateHolidayRequest",
+      "response": {"shape": "model", "model": "HolidayDto", "items_path": null},
+      "notes": [
+        "Assignment round-trips asymmetrically: GET echoes flat userIds/userGroupIds, but POST/PUT want a {contains:\"CONTAINS\", ids, status} filter under users/userGroups. A holiday with no resolvable assignment is rejected."
+      ]
+    },
+    "deleteHoliday": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "HolidayDetailsDto", "items_path": null},
+      "notes": ["DELETE returns 200 with the HolidayDetailsDto body, not 204."]
+    },
+    "getWorkspaceHolidays": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "HolidayDto", "items_path": null},
+      "notes": [
+        "Bare array; page/page-size accepted; holidays is in the audited Last-Page-header stamped set (FACT gen-clockify-openapi.pagination-params-stamped), though the record's Pagination line itself does not restate the header.",
+        "page-size maximum 200."
+      ]
+    },
+    "getWorkspaceHolidaysInPeriod": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "HolidayDto", "items_path": null},
+      "notes": [
+        "assigned-to, start, and end query params are all required by live Clockify.",
+        "assigned-to must be a user ID; user-group IDs are not supported and may produce a misleading 403.",
+        "start/end expect yyyy-MM-ddThh:mm:ssZ."
+      ]
+    },
+    "updateHoliday": {
+      "request_model": "UpdateHolidayRequest",
+      "response": {"shape": "model", "model": "HolidayDto", "items_path": null},
+      "notes": [
+        "PUT replaces the document; omitted fields 400 'must not be null'.",
+        "No single-GET route exists; callers must list-scan to rebuild the full body before update.",
+        "Assignment must be reconstructed into the {contains:\"CONTAINS\", ids, status} filter under users/userGroups; preserving assignment scope is mandatory."
+      ]
+    }
+  }
+}

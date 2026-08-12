@@ -1,0 +1,90 @@
+{
+  "resource": "projects",
+  "operations": {
+    "createProject": {
+      "request_model": "CreateProjectRequest",
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": [
+        "A project name stays reserved after archive+delete; re-creating with the same name returns 'Project with this name already exists' — retry with a distinct name."
+      ]
+    },
+    "createProjectFromTemplate": {
+      "request_model": "CreateProjectFromTemplateRequest",
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": []
+    },
+    "deleteProject": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": [
+        "DELETE of an ACTIVE project is rejected — archive first (archive is a replace-PUT via updateProject: GET, carry fields, overlay archived:true, then DELETE).",
+        "Reading a deleted project returns 400 code 501, byte-identical to a never-existing id — the wire cannot distinguish deleted / never existed / other workspace."
+      ]
+    },
+    "getProjectById": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": [
+        "Deleted, never-existing, and foreign-workspace ids all return the same 400 code 501 body ('Project doesn't belong to Workspace'), never 404."
+      ]
+    },
+    "getWorkspaceProjects": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "Project", "items_path": null},
+      "notes": [
+        "Omitting `archived` returns archived AND active rows; only archived=false restricts to active.",
+        "Last-Page response header is authoritative for pagination; bare array."
+      ]
+    },
+    "assignOrRemoveProjectUsers": {
+      "request_model": "AssignRemoveUsersRequest",
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": [
+        "Multi-entity assign/remove in one call (blast radius multi-entity)."
+      ]
+    },
+    "updateProject": {
+      "request_model": "UpdateProjectRequest",
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": [
+        "UNRESOLVED: PUT omission semantics only partially observed — mixed behavior; do not build a sparse-update helper that assumes preservation.",
+        "Proven: omitting billable/public can reset them — GET the project and carry `billable` plus GET-side `public` back as request-side `isPublic` before every PUT.",
+        "Proven: omitting hourlyRate/costRate preserves both rates (keep-under-omission family).",
+        "Project update fields are top-level (no nested `body` wrapper, unlike clients.update)."
+      ]
+    },
+    "updateProjectEstimate": {
+      "request_model": "UpdateProjectEstimateRequest",
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": [
+        "Dedicated PATCH for estimates — no replacement risk; prefer over carrying estimates through the replace-PUT."
+      ]
+    },
+    "updateProjectMemberships": {
+      "request_model": "UpdateProjectMembershipsRequest",
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": []
+    },
+    "updateProjectTemplate": {
+      "request_model": "UpdateProjectTemplateRequest",
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": []
+    },
+    "updateProjectUserCostRate": {
+      "request_model": "RateRequest",
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": [
+        "UNRESOLVED: PUT omission behavior not independently proven — treat as replacement until live-proven otherwise.",
+        "Rate `amount` is an integer in minor units (cents); GET on a rate path returns 405 — read current value from the membership/project document."
+      ]
+    },
+    "updateProjectUserHourlyRate": {
+      "request_model": "RateRequest",
+      "response": {"shape": "model", "model": "Project", "items_path": null},
+      "notes": [
+        "UNRESOLVED: PUT omission behavior not independently proven — treat as replacement until live-proven otherwise.",
+        "Rate `amount` is an integer in minor units (cents); GET on a rate path returns 405 — read current value from the membership/project document."
+      ]
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "resource": "member_profiles",
+  "operations": {
+    "getMemberProfile": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "MemberProfileDtoV1", "items_path": null},
+      "notes": []
+    },
+    "updateMemberProfile": {
+      "request_model": "MemberProfileUpdateRequest",
+      "response": {"shape": "model", "model": "MemberProfileDtoV1", "items_path": null},
+      "notes": [
+        "PATCH partial update; sensitivity is access_control per manifest write-safety disposition."
+      ]
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "resource": "invoice_items",
+  "operations": {
+    "addInvoiceItem": {
+      "request_model": "AddInvoiceItemRequest",
+      "response": {"shape": "model", "model": "InvoiceDtoFull", "items_path": null},
+      "notes": [
+        "Invoice item unitPrice is minor units x100 (hundredths of a cent); amount = unitPrice * quantity / 100.",
+        "Response is the full updated invoice document, not the created item."
+      ]
+    },
+    "deleteInvoiceItem": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "InvoiceDtoFull", "items_path": null},
+      "notes": [
+        "`order` path parameter binds to a Java int, minimum 1 (item order, not an id).",
+        "DELETE returns 200 with the full updated invoice."
+      ]
+    },
+    "importInvoiceItems": {
+      "request_model": "ImportInvoiceItemsRequest",
+      "response": {"shape": "model", "model": "InvoiceDtoFull", "items_path": null},
+      "notes": [
+        "Invoice item unitPrice is minor units x100; amount = unitPrice * quantity / 100."
+      ]
+    }
+  }
+}

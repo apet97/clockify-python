@@ -1,0 +1,97 @@
+{
+  "resource": "time_entries",
+  "operations": {
+    "putWorkspacesWorkspaceIdUserUserIdTimeEntries": {
+      "request_model": "BulkEditTimeEntryRequest",
+      "response": {"shape": "list", "model": "TimeEntriesTimeEntry", "items_path": null},
+      "notes": [
+        "Request body is a bare JSON array of BulkEditTimeEntryRequest.",
+        "UNRESOLVED: PUT omission behavior unproven; treat as potential replacement.",
+        "Fern method names on the user-scoped /time-entries verbs are mispaired with their summaries; wire operation_id kept byte-exact."
+      ]
+    },
+    "postWorkspacesWorkspaceIdTimeEntries": {
+      "request_model": "CreateTimeEntryRequest",
+      "response": {"shape": "model", "model": "TimeEntriesTimeEntry", "items_path": null},
+      "notes": [
+        "Custom-field write key is `customFields: [{customFieldId, sourceType: \"WORKSPACE\", value}]`; sending the read key `customFieldValues` returns 201 but silently drops the value."
+      ]
+    },
+    "postWorkspacesWorkspaceIdUserUserIdTimeEntries": {
+      "request_model": "TimeEntryCreate",
+      "response": {"shape": "model", "model": "TimeEntry", "items_path": null},
+      "notes": [
+        "Custom-field write key is `customFields`; the read key `customFieldValues` is silently dropped.",
+        "Creating against an archived project returns 201 and succeeds, despite the 400 message that claims archived projects are rejected."
+      ]
+    },
+    "deleteWorkspacesWorkspaceIdTimeEntriesTimeEntryId": {
+      "request_model": null,
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": []
+    },
+    "deleteMany": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "TimeEntryDtoImplV1", "items_path": null},
+      "notes": [
+        "`time-entry-ids` is a required repeated query key; multi-entity delete."
+      ]
+    },
+    "postWorkspacesWorkspaceIdUserUserIdTimeEntriesTimeEntryIdDuplicate": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "TimeEntriesTimeEntry", "items_path": null},
+      "notes": []
+    },
+    "getWorkspacesWorkspaceIdTimeEntriesTimeEntryId": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "TimeEntry", "items_path": null},
+      "notes": []
+    },
+    "getMultipleTimeEntries": {
+      "request_model": "GetTimeEntriesByIdsRequest",
+      "response": {"shape": "list", "model": "TimeEntryWithRatesDtoV1", "items_path": null},
+      "notes": [
+        "Non-mutating POST: batch read of time entries by id."
+      ]
+    },
+    "getWorkspacesWorkspaceIdUserUserIdTimeEntries": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "TimeEntry", "items_path": null},
+      "notes": [
+        "Bare-array pagination via `page`/`page-size`; `Last-Page` response header is authoritative.",
+        "`start`/`end` window values are re-read as wall clock in the account's timezone; the Z/offset suffix does not select the instant.",
+        "`start` filters correctly: excludes entries whose timeInterval.start is before the given instant."
+      ]
+    },
+    "getWorkspacesWorkspaceIdTimeEntriesStatusInProgress": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "TimeEntriesTimeEntry", "items_path": null},
+      "notes": [
+        "Bare-array pagination via `page`/`page-size` (default page-size 10); `Last-Page` response header is authoritative."
+      ]
+    },
+    "patchWorkspacesWorkspaceIdTimeEntriesInvoiced": {
+      "request_model": null,
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "Inline request body {invoiced: boolean, timeEntryIds: array[string]} — no component schema name.",
+        "Multi-entity financial transition."
+      ]
+    },
+    "patchWorkspacesWorkspaceIdUserUserIdTimeEntries": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "TimeEntriesTimeEntry", "items_path": null},
+      "notes": [
+        "Inline request body {end: string<date-time>} — no component schema name.",
+        "The old `/stop` route is a phantom (404); this user-scoped PATCH is the only stop-timer route."
+      ]
+    },
+    "putWorkspacesWorkspaceIdTimeEntriesTimeEntryId": {
+      "request_model": "TimeEntryUpdate",
+      "response": {"shape": "model", "model": "TimeEntry", "items_path": null},
+      "notes": [
+        "UNRESOLVED: PUT omission behavior unproven; treat as potential replacement."
+      ]
+    }
+  }
+}

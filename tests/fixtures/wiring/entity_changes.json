@@ -1,0 +1,35 @@
+{
+  "resource": "entity_changes",
+  "operations": {
+    "getCreatedEntityInfo": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "EntityChangeDocument", "items_path": null},
+      "notes": [
+        "Experimental endpoint.",
+        "type query parameter is required (repeated key, ChangeTrackerDocumentType values).",
+        "page and limit are string-typed on the wire (defaults '0' and '50'); no Last-Page header.",
+        "Omitted start/end default to a 30-day window anchored on the provided bound (or current date)."
+      ]
+    },
+    "getDeletedEntityInfo": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "EntityChangeDocument", "items_path": null},
+      "notes": [
+        "Experimental endpoint.",
+        "type query parameter is required (repeated key, ChangeTrackerDocumentType values).",
+        "page and limit are string-typed on the wire (defaults '0' and '50'); no Last-Page header.",
+        "Omitted start/end default to a 30-day window anchored on the provided bound (or current date)."
+      ]
+    },
+    "getUpdatedEntityInfo": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "EntityChangeDocument", "items_path": null},
+      "notes": [
+        "Experimental endpoint.",
+        "type query parameter is required (repeated key, ChangeTrackerDocumentType values).",
+        "page and limit are string-typed on the wire (defaults '0' and '50'); no Last-Page header.",
+        "Omitted start/end default to a 30-day window anchored on the provided bound (or current date)."
+      ]
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "resource": "time_off_requests",
+  "operations": {
+    "getAllTimeOffRequestsOnWorkspace": {
+      "request_model": "TimeOffRequestSearchRequest",
+      "response": {"shape": "model", "model": "TimeOffRequestsResponse", "items_path": null},
+      "notes": [
+        "Non-mutating search POST; items live under the requests envelope key.",
+        "status envelope fields: statusType/changedByUserId/changedByUserName/changedForUserName/changedAt/note; no createdBy anywhere; createdAt is top-level."
+      ]
+    },
+    "createTimeOffRequest": {
+      "request_model": "CreateTimeOffRequest",
+      "response": {"shape": "model", "model": "TimeOffRequestFullV1Dto", "items_path": null},
+      "notes": [
+        "Period shape depends on policy time unit: DAYS wants {start, days} (date-only start); HOURS wants {start, end} RFC3339 without milliseconds (.000Z 400s).",
+        "Stored request always echoes a server-computed {start,end}."
+      ]
+    },
+    "createTimeOffRequestForUser": {
+      "request_model": "CreateTimeOffRequest",
+      "response": {"shape": "model", "model": "TimeOffRequestFullV1Dto", "items_path": null},
+      "notes": [
+        "Same policy-unit-dependent period shape as createTimeOffRequest."
+      ]
+    },
+    "changeTimeOffRequestStatus": {
+      "request_model": "ChangeTimeOffRequestStatusRequest",
+      "response": {"shape": "model", "model": "TimeOffRequestDto", "items_path": null},
+      "notes": [
+        "Wire field is status (statusType only appears in responses); valid targets are APPROVED/REJECTED only — PENDING/WITHDRAWN are read-only states.",
+        "Flat /time-off/requests/{requestId}/status route 404s; only this policy-scoped PATCH works."
+      ]
+    },
+    "deleteTimeOffRequest": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "TimeOffRequestDto", "items_path": null},
+      "notes": [
+        "Withdraw/delete is valid only while the request is PENDING; APPROVED/REJECTED requests have no delete path.",
+        "Only the policy-scoped DELETE works; the flat /time-off/requests/{requestId} route 404s."
+      ]
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "resource": "workspaces",
+  "operations": {
+    "addWorkspace": {
+      "request_model": "CreateWorkspaceRequest",
+      "response": {"shape": "model", "model": "Workspace", "items_path": null},
+      "notes": [
+        "UNRESOLVED: evidence bucket is probe-documented, not live-success; keep the SDK method but defer any MCP write exposure."
+      ]
+    },
+    "getWorkspaceInfo": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Workspace", "items_path": null},
+      "notes": []
+    },
+    "getAllMyWorkspaces": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "Workspace", "items_path": null},
+      "notes": [
+        "No server-side paging: page/page-size (and variants) are ignored and the full collection is returned.",
+        "roles is a repeated query key; owners are not counted as admins when filtering."
+      ]
+    },
+    "updateWorkspaceBillableRate": {
+      "request_model": "UpdateWorkspaceBillableRateRequest",
+      "response": {"shape": "model", "model": "Workspace", "items_path": null},
+      "notes": [
+        "Rate amount is a raw upstream integer (minor units); no currency scaling.",
+        "UNRESOLVED: PUT omission behavior unproven; label previews as potential replacement."
+      ]
+    },
+    "updateWorkspaceCostRate": {
+      "request_model": "UpdateCostRateRequest",
+      "response": {"shape": "model", "model": "Workspace", "items_path": null},
+      "notes": [
+        "Rate amount is a raw upstream integer (minor units); no currency scaling.",
+        "UNRESOLVED: PUT omission behavior unproven; label previews as potential replacement."
+      ]
+    }
+  }
+}

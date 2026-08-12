@@ -1,0 +1,40 @@
+{
+  "resource": "tags",
+  "operations": {
+    "postWorkspacesWorkspaceIdTags": {
+      "request_model": "TagCreate",
+      "response": {"shape": "model", "model": "Tag", "items_path": null},
+      "notes": [
+        "A deleted tag's NAME stays reserved: re-creating returns 'Tag with this name already exists' even though it appears in no list; retry with a distinct name."
+      ]
+    },
+    "deleteWorkspacesWorkspaceIdTagsTagId": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Tag", "items_path": null},
+      "notes": [
+        "DELETE answers 200 with the full deleted Tag entity as the body (unlike e.g. deleteExpense, which is empty-bodied)."
+      ]
+    },
+    "getWorkspacesWorkspaceIdTagsTagId": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Tag", "items_path": null},
+      "notes": []
+    },
+    "getWorkspacesWorkspaceIdTags": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "Tag", "items_path": null},
+      "notes": [
+        "Omitting archived returns archived AND active rows; only archived=false restricts to active.",
+        "Last-Page response header is authoritative for pagination; page-size is the hyphenated v1 spelling."
+      ]
+    },
+    "putWorkspacesWorkspaceIdTagsTagId": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Tag", "items_path": null},
+      "notes": [
+        "Request body is an inline object {archived?: boolean, name?: string} with no component-schema name.",
+        "PUT is a proven FULL REPLACE: omitting archived resets it to false — a name-only body silently un-archives an archived tag. Always resend archived."
+      ]
+    }
+  }
+}

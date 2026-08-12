@@ -1,0 +1,44 @@
+{
+  "resource": "clients",
+  "operations": {
+    "postWorkspacesWorkspaceIdClients": {
+      "request_model": "ClientCreate",
+      "response": {"shape": "model", "model": "Client", "items_path": null},
+      "notes": [
+        "ccEmails and currencyId are silently ignored on create (ccEmails returns null; currency falls back to workspace default); PUT persists both.",
+        "currencyCode is inert on both verbs; only currencyId (PUT only) sets the currency.",
+        "A previously deleted entity name stays reserved; re-create may report 'already exists' — retry with a distinct name."
+      ]
+    },
+    "deleteWorkspacesWorkspaceIdClientsClientId": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Client", "items_path": null},
+      "notes": [
+        "Client must be archived before DELETE (archive is a replace-PUT carrying at least name + archived:true).",
+        "DELETE answers 200 with the full deleted entity."
+      ]
+    },
+    "getWorkspacesWorkspaceIdClientsClientId": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Client", "items_path": null},
+      "notes": []
+    },
+    "getWorkspacesWorkspaceIdClients": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "Client", "items_path": null},
+      "notes": [
+        "Last-Page response header is authoritative for pagination.",
+        "Omitting archived returns archived AND active rows; only archived=false restricts to active."
+      ]
+    },
+    "putWorkspacesWorkspaceIdClientsClientId": {
+      "request_model": "ClientUpdate",
+      "response": {"shape": "model", "model": "Client", "items_path": null},
+      "notes": [
+        "Replacing PUT with proven replacement risk: omitting ccEmails clears stored addresses; resend name and ccEmails on every update.",
+        "currencyCode is inert; currencyId works only on PUT.",
+        "Clockify accepts client archive updates only with the nested body shape {name, archived:true}; top-level fields return 'Required request body is missing'."
+      ]
+    }
+  }
+}

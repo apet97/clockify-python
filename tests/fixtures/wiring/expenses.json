@@ -1,0 +1,51 @@
+{
+  "resource": "expenses",
+  "operations": {
+    "createExpense": {
+      "request_model": "ExpenseCreateRequest",
+      "response": {"shape": "model", "model": "ExpenseDtoV1", "items_path": null},
+      "notes": [
+        "Multipart body; `file` part content type application/octet-stream.",
+        "Money units are NOT uniform: expense create/update `amount` is MAJOR units (dollars) on the wire; the expense response `total` is MINOR units (cents)."
+      ]
+    },
+    "deleteExpense": {
+      "request_model": null,
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": ["Success status is 200 with empty body (not 204)."]
+    },
+    "downloadExpenseReceipt": {
+      "request_model": null,
+      "response": {"shape": "bytes", "model": null, "items_path": null},
+      "notes": [
+        "UNRESOLVED (manifest): binary payload has no context-safe raw MCP representation in v1; keep SDK-only unless a bounded resource/download contract is designed."
+      ]
+    },
+    "getExpenseById": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "ExpenseDtoV1", "items_path": null},
+      "notes": [
+        "Response `total` is MINOR units (cents)."
+      ]
+    },
+    "getWorkspaceExpenses": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "ExpenseDtoV1", "items_path": ["expenses", "expenses"]},
+      "notes": [
+        "WorkspaceExpensesDtoV1 double-nested envelope: expense items live at expenses.expenses[]; envelope also carries dailyTotals and weeklyTotals arrays (the manifest Pagination line names only those two arrays; items_path chosen from the live-evidence FACT `expenses.list.expanded-category-and-project-dropped`).",
+        "Last-Page header authoritative.",
+        "Live wire returns fully expanded `category`/`project`/`task` objects plus `fileName` per item (ExpenseHydratedDtoV1 override).",
+        "`start`/`end` filters are ignored server-side; date filtering must be client-side (compensated-in-sdk in TS)."
+      ]
+    },
+    "updateExpense": {
+      "request_model": "ExpenseUpdateRequest",
+      "response": {"shape": "model", "model": "ExpenseDtoV1", "items_path": null},
+      "notes": [
+        "Multipart body; `file` part content type application/octet-stream.",
+        "PUT with proven replacement risk; resend full document.",
+        "Request `amount` is MAJOR units (dollars); response `total` is MINOR units (cents)."
+      ]
+    }
+  }
+}

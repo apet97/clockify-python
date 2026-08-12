@@ -1,0 +1,49 @@
+{
+  "resource": "time_off_policies",
+  "operations": {
+    "createTimeOffPolicy": {
+      "request_model": "CreateTimeOffPolicyRequest",
+      "response": {"shape": "model", "model": "Policy", "items_path": null},
+      "notes": [
+        "approve is required on create despite spec optionality: omitting it returns {\"message\":\"must not be null\",\"code\":501} under every assignee shape.",
+        "Policy scope filter uses status \"ACTIVE\" (holidays use \"ALL\") in the {contains,ids,status} shape."
+      ]
+    },
+    "deleteTimeOffPolicy": {
+      "request_model": null,
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "No lifecycle prerequisite stated in the manifest record; no archive-before-delete anchor is assigned to this operation."
+      ]
+    },
+    "getTimeOffPolicy": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Policy", "items_path": null},
+      "notes": [
+        "Legacy-policy nullability/absence of the replacement fields remains open; validate required replacement state, do not invent it."
+      ]
+    },
+    "getTimeOffPolicies": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "Policy", "items_path": null},
+      "notes": [
+        "Last-Page response header is authoritative for pagination.",
+        "page query parameter is typed as string (maxLength 1000) in the corrected spec."
+      ]
+    },
+    "updateTimeOffPolicy": {
+      "request_model": "UpdateTimeOffPolicyRequest",
+      "response": {"shape": "model", "model": "Policy", "items_path": null},
+      "notes": [
+        "Proven replacement risk: PUT replaces the document; carry forward full policy fields (POLICY_CARRY_FIELDS in the TS tool layer) via GET-then-PUT.",
+        "PUT wants users/userGroups as {contains:\"CONTAINS\", ids, status:\"ACTIVE\"} filters; GET echoes them flat as userIds/userGroupIds.",
+        "Body must be sent FLAT; a nested body envelope is silently dropped by generated methods."
+      ]
+    },
+    "changeTimeOffPolicyStatus": {
+      "request_model": "PolicyStatusChangeRequest",
+      "response": {"shape": "model", "model": "Policy", "items_path": null},
+      "notes": []
+    }
+  }
+}

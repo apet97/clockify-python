@@ -1,0 +1,27 @@
+{
+  "resource": "invoice_payments",
+  "operations": {
+    "addInvoicePayment": {
+      "request_model": "AddInvoicePaymentRequest",
+      "response": {"shape": "model", "model": "InvoiceDtoFull", "items_path": null},
+      "notes": [
+        "POST returns 201 with the updated INVOICE document, NOT the created payment; recover the new payment id by GETing .../payments before and after and taking the set-difference.",
+        "Field-name asymmetry: request body uses `paymentDate` (RFC3339, non-millisecond); payments-list item uses `date`.",
+        "`amount` is int64 in MINOR units (cents), minimum 1."
+      ]
+    },
+    "deleteInvoicePayment": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "InvoiceDtoFull", "items_path": null},
+      "notes": ["DELETE returns 200 with the full updated invoice."]
+    },
+    "getInvoicePayments": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "InvoicePaymentDto", "items_path": null},
+      "notes": [
+        "Bare array; Last-Page header authoritative.",
+        "List items carry id/amount/author/date/note; `amount` is MINOR units (cents)."
+      ]
+    }
+  }
+}

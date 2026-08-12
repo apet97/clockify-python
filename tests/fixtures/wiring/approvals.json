@@ -1,0 +1,58 @@
+{
+  "resource": "approvals",
+  "operations": {
+    "getApprovalRequests": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "ApprovalRequestListItem", "items_path": null},
+      "notes": [
+        "Last-Page response header is authoritative for pagination.",
+        "userId and start/end date query filters are accepted but ignored by the live API."
+      ]
+    },
+    "resubmitEntriesForApproval": {
+      "request_model": "SubmitApprovalRequestRequest",
+      "response": {"shape": "model", "model": "ApprovalRequestDtoV1", "items_path": null},
+      "notes": [
+        "WRITE-DEFERRED: success not in live-success bucket (documented only); no MCP write until a controlled success probe exists."
+      ]
+    },
+    "resubmitEntriesForApprovalForUser": {
+      "request_model": "SubmitApprovalRequestRequest",
+      "response": {"shape": "model", "model": "ApprovalRequestDtoV1", "items_path": null},
+      "notes": [
+        "WRITE-DEFERRED: success not in live-success bucket (probe-documented); no MCP write until a controlled success probe exists."
+      ]
+    },
+    "submitApprovalRequest": {
+      "request_model": "SubmitApprovalRequestRequest",
+      "response": {"shape": "model", "model": "ApprovalRequestDtoV1", "items_path": null},
+      "notes": []
+    },
+    "submitApprovalRequestForUser": {
+      "request_model": "SubmitApprovalRequestRequest",
+      "response": {"shape": "model", "model": "ApprovalRequestDtoV1", "items_path": null},
+      "notes": []
+    },
+    "createApprovalForOtherWithType": {
+      "request_model": "CreateApprovalRequestNoType",
+      "response": {"shape": "model", "model": "ApprovalRequestDtoV1", "items_path": null},
+      "notes": [
+        "type path segment is enum TIMESHEET | EXPENSE | TIMESHEET_AND_EXPENSE.",
+        "WRITE-DEFERRED: success not in live-success bucket (probe-documented)."
+      ]
+    },
+    "createApprrovalRequest_1": {
+      "request_model": "CreateApprovalRequestNoType",
+      "response": {"shape": "model", "model": "ApprovalRequestDtoV1", "items_path": null},
+      "notes": [
+        "approvalRequestId path segment is actually the approval type, enum TIMESHEET | EXPENSE; the position collides with PATCH updateApprovalRequest at HTTP routing level.",
+        "WRITE-DEFERRED: success not in live-success bucket (probe-documented)."
+      ]
+    },
+    "updateApprovalRequest": {
+      "request_model": "UpdateApprovalRequestRequest",
+      "response": {"shape": "model", "model": "ApprovalRequestDtoV1", "items_path": null},
+      "notes": []
+    }
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "resource": "users",
+  "operations": {
+    "addLimitedUsersWithInfo": {
+      "request_model": "AddLimitedUsersRequest",
+      "response": {"shape": "model", "model": null, "items_path": null},
+      "notes": [
+        "Response is an inline additionalProperties object with no component name.",
+        "UNRESOLVED: evidence bucket is probe-documented, not live-success; keep the SDK method but defer any MCP write exposure."
+      ]
+    },
+    "addUserToWorkspace": {
+      "request_model": "AddUserToWorkspaceRequest",
+      "response": {"shape": "model", "model": "Workspace", "items_path": null},
+      "notes": [
+        "send-email is a required string-enum query parameter (\"true\"/\"false\", default \"true\").",
+        "UNRESOLVED: evidence bucket is probe-documented, not live-success; keep the SDK method but defer any MCP write exposure."
+      ]
+    },
+    "filterWorkspaceUsers": {
+      "request_model": "UserFilterRequest",
+      "response": {"shape": "list", "model": "UserDtoV1", "items_path": null},
+      "notes": [
+        "Non-mutating filter POST."
+      ]
+    },
+    "giveUserManagerRole": {
+      "request_model": "ManagerRoleRequest",
+      "response": {"shape": "list", "model": "RoleAssignmentDtoV1", "items_path": null},
+      "notes": [
+        "201 returns a bare array of role assignments."
+      ]
+    },
+    "findWorkspaceUsers": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "UserDtoV1", "items_path": null},
+      "notes": [
+        "Last-Page response header is authoritative for pagination.",
+        "include-roles is a required query parameter.",
+        "settings key is always present per member; explicit null when unset, never absent."
+      ]
+    },
+    "findUserTeamManagers": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "UserDtoV1", "items_path": null},
+      "notes": [
+        "Last-Page response header is authoritative for pagination."
+      ]
+    },
+    "getCurrentUser": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "UserDtoV1", "items_path": null},
+      "notes": []
+    },
+    "removeUserManagerRole": {
+      "request_model": "ManagerRoleRequest",
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "DELETE with a required JSON body; 204 no content."
+      ]
+    },
+    "updateUserCostRate": {
+      "request_model": "UpdateCostRateRequest",
+      "response": {"shape": "model", "model": "Workspace", "items_path": null},
+      "notes": [
+        "Rate amount is an integer in MINOR units (cents); GET on rate paths 405s — read current value from the membership document.",
+        "UNRESOLVED: PUT omission behavior unproven; label previews as potential replacement."
+      ]
+    },
+    "updateUserCustomFieldValue": {
+      "request_model": "UpdateUserCustomFieldValueRequest",
+      "response": {"shape": "model", "model": null, "items_path": null},
+      "notes": [
+        "201 response shape is an untyped value in the corrected spec; no component name.",
+        "UNRESOLVED: PUT omission behavior unproven; label previews as potential replacement."
+      ]
+    },
+    "updateUserHourlyRate": {
+      "request_model": "UpdateUserHourlyRateRequest",
+      "response": {"shape": "model", "model": "Workspace", "items_path": null},
+      "notes": [
+        "Rate amount is an integer in MINOR units (cents); GET on rate paths 405s — read current value from the membership document.",
+        "UNRESOLVED: PUT omission behavior unproven; label previews as potential replacement."
+      ]
+    },
+    "updateUserStatus": {
+      "request_model": "UpdateUserStatusRequest",
+      "response": {"shape": "model", "model": "Workspace", "items_path": null},
+      "notes": [
+        "UNRESOLVED: PUT omission behavior unproven; label previews as potential replacement."
+      ]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "resource": "audit_log",
+  "operations": {
+    "searchAuditLogs": {
+      "request_model": "AuditLogRequest",
+      "response": {"shape": "model", "model": "AuditLogResponse", "items_path": null},
+      "notes": [
+        "Non-mutating POST: the body is a search filter, served from the AUDIT_LOG service host https://auditlog-api.api.clockify.me/v1.",
+        "Manifest response row names schema AuditLogResponse but marks envelope 'bare array'; treated as a component model here.",
+        "Action vocabulary is a closed enum; an invented action fails the request instead of acting as an open filter."
+      ]
+    }
+  }
+}

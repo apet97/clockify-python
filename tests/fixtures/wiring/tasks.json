@@ -1,0 +1,56 @@
+{
+  "resource": "tasks",
+  "operations": {
+    "addTaskOnProject": {
+      "request_model": "TaskCreateRequest",
+      "response": {"shape": "model", "model": "Task", "items_path": null},
+      "notes": [
+        "Optional `billable` field was missing from the create schema; fixed in canonical source (commit a4e72bb)."
+      ]
+    },
+    "deleteTaskFromProject": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Task", "items_path": null},
+      "notes": [
+        "Clockify rejects DELETE of an ACTIVE task: it must be marked status DONE first (GET-then-PUT overlay `status: \"DONE\"`, then DELETE)."
+      ]
+    },
+    "getTaskById": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "Task", "items_path": null},
+      "notes": []
+    },
+    "findTasksOnProject": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "Task", "items_path": null},
+      "notes": [
+        "Bare-array pagination via `page`/`page-size`; `Last-Page` response header is authoritative."
+      ]
+    },
+    "updateTaskOnProject": {
+      "request_model": "TaskUpdateRequest",
+      "response": {"shape": "model", "model": "Task", "items_path": null},
+      "notes": [
+        "Proven replacement risk: PUT replaces; resend all fields to avoid data loss."
+      ]
+    },
+    "updateTaskBillableRate": {
+      "request_model": "RateUpdateRequest",
+      "response": {"shape": "model", "model": "Task", "items_path": null},
+      "notes": [
+        "Rate `amount` is an integer in minor units (cents); no currency scaling applied by the SDK.",
+        "GET on a rate path returns 405; read the current rate from the task/project document.",
+        "UNRESOLVED: PUT omission behavior unproven; treat as potential replacement."
+      ]
+    },
+    "updateTaskCostRate": {
+      "request_model": "RateUpdateRequest",
+      "response": {"shape": "model", "model": "Task", "items_path": null},
+      "notes": [
+        "Rate `amount` is an integer in minor units (cents); no currency scaling applied by the SDK.",
+        "GET on a rate path returns 405; read the current rate from the task/project document.",
+        "UNRESOLVED: PUT omission behavior unproven; treat as potential replacement."
+      ]
+    }
+  }
+}

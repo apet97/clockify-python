@@ -1,0 +1,42 @@
+{
+  "resource": "user_groups",
+  "operations": {
+    "addUsersToGroup": {
+      "request_model": "AddUserToGroupRequest",
+      "response": {"shape": "model", "model": "UserGroupDtoV1", "items_path": null},
+      "notes": []
+    },
+    "addNewGroup": {
+      "request_model": "UserGroupRequest",
+      "response": {"shape": "model", "model": "UserGroupDtoV1", "items_path": null},
+      "notes": []
+    },
+    "deleteGroup": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "UserGroupDtoV1", "items_path": null},
+      "notes": [
+        "200 returns the deleted group document, not an empty body."
+      ]
+    },
+    "findAllGroupsOnWorkspace": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "UserGroupDtoV1", "items_path": null},
+      "notes": [
+        "Last-Page response header is authoritative for pagination.",
+        "includeTeamManagers wire name is camelCase, unlike the kebab-case siblings."
+      ]
+    },
+    "removeUserFromGroup": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "UserGroupDtoV1", "items_path": null},
+      "notes": []
+    },
+    "updateGroup": {
+      "request_model": "UserGroupRequest",
+      "response": {"shape": "model", "model": "UserGroupDtoV1", "items_path": null},
+      "notes": [
+        "UNRESOLVED: PUT omission behavior unproven; treat as potential full replacement and label previews accordingly."
+      ]
+    }
+  }
+}

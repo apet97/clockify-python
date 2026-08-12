@@ -1,0 +1,38 @@
+{
+  "resource": "time_off_balance_assignments",
+  "operations": {
+    "createBalanceAssignment": {
+      "request_model": "CreateBalanceAssignmentV1Request",
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "A balance assignment is a per-(user, policy) singleton.",
+        "Create is ADDITIVE, not idempotent: with an existing assignment, `balance: 2` adds 2 to `accrued` on the same assignment id (201, empty body); repeating it adds again. Against a user with no assignment it creates one.",
+        "Returns 201 with an empty body."
+      ]
+    },
+    "deleteBalanceAssignment": {
+      "request_model": "DeleteBalanceAssignmentV1Request",
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "DELETE with a required JSON body (DeleteBalanceAssignmentV1Request).",
+        "Returns 200 with an empty body."
+      ]
+    },
+    "getBalanceAssignmentsForUserAndPolicy": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "BalanceAssignmentV1Dto", "items_path": null},
+      "notes": [
+        "Response content type is */* but decodes as JSON bare array."
+      ]
+    },
+    "updateBalanceAssignment": {
+      "request_model": "UpdateBalanceAssignmentV1Request",
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "`balanceChange` is applied as a DELTA, not a replacement value: `balanceChange: -4` took `accrued` from 7.0 down by 4 (204).",
+        "Returns 204 with no body.",
+        "UNRESOLVED: PUT omission behavior unproven; treat as potential replacement."
+      ]
+    }
+  }
+}

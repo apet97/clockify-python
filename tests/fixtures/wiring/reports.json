@@ -1,0 +1,51 @@
+{
+  "resource": "reports",
+  "operations": {
+    "generateAttendanceReport": {
+      "request_model": "AttendanceReportRequest",
+      "response": {"shape": "model", "model": "AttendanceReportResponse", "items_path": null},
+      "notes": [
+        "Non-mutating POST on the reports host.",
+        "dateRangeStart/dateRangeEnd are wall-clock in the request body's timeZone; timeZone: UTC restores the literal reading.",
+        "Response timestamps are rendered as local offsets in the request timeZone, not UTC Z."
+      ]
+    },
+    "generateDetailedReport": {
+      "request_model": "DetailedReportRequest",
+      "response": {"shape": "model", "model": "DetailedReportResponse", "items_path": null},
+      "notes": [
+        "Non-mutating POST on the reports host.",
+        "Envelope item arrays: timeEntries, timeentries, totals.",
+        "Wall-clock date-range and request-timezone timestamp rendering apply (see attendance notes)."
+      ]
+    },
+    "generateDetailedReportV1": {
+      "request_model": "ExpenseReportFilterV1",
+      "response": {"shape": "model", "model": "ExpenseDetailedReportDtoV1", "items_path": null},
+      "notes": [
+        "Non-mutating POST on the reports host; request body is optional.",
+        "Money fields use raw upstream integer units; no currency scaling applied.",
+        "Expense amount/total preserve upstream scaling (create amount MAJOR, response total MINOR)."
+      ]
+    },
+    "generateSummaryReport": {
+      "request_model": "SummaryReportRequest",
+      "response": {"shape": "model", "model": "SummaryReportResponse", "items_path": null},
+      "notes": [
+        "Non-mutating POST on the reports host.",
+        "Envelope item arrays: groupOne, totals, donutChart.",
+        "Wall-clock date-range and request-timezone timestamp rendering apply."
+      ]
+    },
+    "generateWeeklyReport": {
+      "request_model": "WeeklyReportRequest",
+      "response": {"shape": "model", "model": "WeeklyReportResponse", "items_path": null},
+      "notes": [
+        "Non-mutating POST on the reports host.",
+        "Weekly report requires an EXACT seven-day dateRangeStart..dateRangeEnd interval (evidence anchor reports.weekly.exact-seven-day-window).",
+        "Envelope item arrays: groupOne, totals, totalsByDay, usersWithoutTime.",
+        "Wall-clock date-range and request-timezone timestamp rendering apply."
+      ]
+    }
+  }
+}

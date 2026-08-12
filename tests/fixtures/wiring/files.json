@@ -1,0 +1,13 @@
+{
+  "resource": "files",
+  "operations": {
+    "uploadImage": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "ImageUploadResponse", "items_path": null},
+      "notes": [
+        "Multipart body is an inline schema (required binary `file` part), no component name.",
+        "Path is /file/image with no workspace path parameter."
+      ]
+    }
+  }
+}

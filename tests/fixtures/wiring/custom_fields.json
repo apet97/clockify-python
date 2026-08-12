@@ -1,0 +1,50 @@
+{
+  "resource": "custom_fields",
+  "operations": {
+    "createWorkspaceCustomField": {
+      "request_model": "CreateCustomFieldRequest",
+      "response": {"shape": "model", "model": "CustomField", "items_path": null},
+      "notes": [
+        "required is an optional boolean on the create request (corrected in canonical source)."
+      ]
+    },
+    "deleteWorkspaceCustomField": {
+      "request_model": null,
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": ["204 with no body."]
+    },
+    "listProjectCustomFields": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "CustomField", "items_path": null},
+      "notes": [
+        "Pagination line omits the Last-Page wording, but the record's audited LAST_PAGE_HEADER_OPS facts include project-custom-fields; last_page_header=True was chosen on that evidence.",
+        "page-size max 200."
+      ]
+    },
+    "listWorkspaceCustomFields": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "CustomField", "items_path": null},
+      "notes": [
+        "Pagination line omits the Last-Page wording, but the record's audited LAST_PAGE_HEADER_OPS facts include custom-fields; last_page_header=True was chosen on that evidence.",
+        "page-size max 200."
+      ]
+    },
+    "removeProjectCustomField": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "CustomField", "items_path": null},
+      "notes": []
+    },
+    "updateProjectCustomField": {
+      "request_model": "UpdateProjectCustomFieldRequest",
+      "response": {"shape": "model", "model": "CustomField", "items_path": null},
+      "notes": []
+    },
+    "updateWorkspaceCustomField": {
+      "request_model": "UpdateCustomFieldRequest",
+      "response": {"shape": "model", "model": "CustomField", "items_path": null},
+      "notes": [
+        "UNRESOLVED: PUT omission behavior unproven; treat as replacement until live-proven otherwise (UNKNOWN_CONSERVATIVE)."
+      ]
+    }
+  }
+}

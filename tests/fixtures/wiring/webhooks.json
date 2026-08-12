@@ -1,0 +1,65 @@
+{
+  "resource": "webhooks",
+  "operations": {
+    "createWebhook": {
+      "request_model": "WebhookRequest",
+      "response": {"shape": "model", "model": "WebhookDtoV1", "items_path": null},
+      "notes": [
+        "name requiredness is auth-scheme-dependent: REQUIRED under X-Api-Key, NOT required under X-Addon-Token.",
+        "triggerSource:[] is accepted for workspace-scoped events; spec required[] is not a reliable per-field oracle for this schema."
+      ]
+    },
+    "deleteWebhook": {
+      "request_model": null,
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": []
+    },
+    "getWebhookById": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "WebhookDtoV1", "items_path": null},
+      "notes": []
+    },
+    "getWebhooksOnWorkspace": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "WebhookCollectionDtoV1", "items_path": null},
+      "notes": [
+        "Items live under the webhooks envelope key."
+      ]
+    },
+    "getWebhookEventStatusesWithLatestLog": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "WebhookEventStatusWithLatestLogDtoV1", "items_path": null},
+      "notes": [
+        "Pagination uses size (not page-size); page default is 0; no Last-Page header claim in the record."
+      ]
+    },
+    "getAddonWebhooksOnWorkspace": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "WebhookCollectionDtoV1", "items_path": null},
+      "notes": [
+        "Items live under the webhooks envelope key."
+      ]
+    },
+    "patchWorkspacesWorkspaceIdWebhooksWebhookIdToken": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "WebhooksWebhook2", "items_path": null},
+      "notes": [
+        "Body-less PATCH that rotates the webhook token; response schema differs from WebhookDtoV1."
+      ]
+    },
+    "getWebhookLogs": {
+      "request_model": "WebhookLogsRequest",
+      "response": {"shape": "list", "model": "WebhookLogDtoV1", "items_path": null},
+      "notes": [
+        "Non-mutating log-search POST; pagination via page/size query parameters (page default 0)."
+      ]
+    },
+    "updateWebhook": {
+      "request_model": "WebhookRequest",
+      "response": {"shape": "model", "model": "WebhookDtoV1", "items_path": null},
+      "notes": [
+        "UNRESOLVED: PUT omission behavior unproven; label previews as potential replacement."
+      ]
+    }
+  }
+}

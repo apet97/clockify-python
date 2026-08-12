@@ -1,0 +1,48 @@
+{
+  "resource": "shared_reports",
+  "operations": {
+    "postWorkspacesWorkspaceIdSharedReports": {
+      "request_model": "SharedReportCreate",
+      "response": {"shape": "model", "model": "SharedReport", "items_path": null},
+      "notes": [
+        "Runs on the REPORTS host (reports.api.clockify.me/v1).",
+        "Live success status is 200, not 201 (probe-lab 201 stamp was a transcription defect; two independent live probes recorded 200)."
+      ]
+    },
+    "deleteWorkspacesWorkspaceIdSharedReportsSharedReportId": {
+      "request_model": null,
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "Runs on the REPORTS host; 204 empty body."
+      ]
+    },
+    "getWorkspacesWorkspaceIdSharedReports": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "SharedReportListEnvelope", "items_path": ["reports"]},
+      "notes": [
+        "Runs on the REPORTS host; page-size wire key is camelCase pageSize (hyphenated page-size is silently ignored on this host).",
+        "sharedReportsFilter enum: ALL, ALL_ADMIN, CREATED_BY_ME, SHARED_WITH_ME (default ALL)."
+      ]
+    },
+    "putWorkspacesWorkspaceIdSharedReportsSharedReportId": {
+      "request_model": "SharedReportCreate",
+      "response": {"shape": "model", "model": "SharedReport", "items_path": null},
+      "notes": [
+        "Runs on the REPORTS host.",
+        "PUT with documented MERGE semantics (not a full replace); body reuses SharedReportCreate."
+      ]
+    },
+    "getSharedReportsSharedReportId": {
+      "request_model": null,
+      "response": {"shape": "negotiated", "model": "SharedReportData", "items_path": null},
+      "notes": [
+        "Runs on the REPORTS host; bare path /shared-reports/{sharedReportId} with no workspaceId.",
+        "CONTENT_NEGOTIATED: application/json -> SharedReportData; application/pdf and xlsx -> bytes; text/csv -> text; exportType enum JSON_V1/JSON/CSV/XLSX/PDF.",
+        "JSON body is the RENDERED report {totals, donutChart, groupTotals, groupOne, filters}; saved config is nested under filters. SharedReportData stays open (additionalProperties true); it shares no top-level key with SharedReport.",
+        "Paginated envelope carries multiple item arrays (groupOne, totals, donutChart); groupOne chosen as primary items_path.",
+        "sortColumn is validated against the report type; unknown column returns 400.",
+        "MCP disposition: eligible with JSON/CSV-only contract."
+      ]
+    }
+  }
+}

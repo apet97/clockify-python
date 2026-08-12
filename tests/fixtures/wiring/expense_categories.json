@@ -1,0 +1,38 @@
+{
+  "resource": "expense_categories",
+  "operations": {
+    "addExpenseCategory": {
+      "request_model": "ExpenseCategoryRequest",
+      "response": {"shape": "model", "model": "ExpenseCategoryDtoV1", "items_path": null},
+      "notes": [
+        "Money/rate fields use raw upstream integer units; no currency scaling is applied."
+      ]
+    },
+    "deleteExpenseCategory": {
+      "request_model": null,
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "Lifecycle: category must be archived before DELETE; ACTIVE entities are rejected. Archive via the dedicated PATCH /status (no replace risk)."
+      ]
+    },
+    "getExpenseCategories": {
+      "request_model": null,
+      "response": {"shape": "list", "model": "ExpenseCategoryDtoV1", "items_path": ["categories"]},
+      "notes": [
+        "ExpenseCategoriesDtoV1 object envelope; item array under `categories`; Last-Page header authoritative."
+      ]
+    },
+    "updateExpenseCategory": {
+      "request_model": "ExpenseCategoryRequest",
+      "response": {"shape": "model", "model": "ExpenseCategoryDtoV1", "items_path": null},
+      "notes": [
+        "PUT with proven replacement risk; resend full document."
+      ]
+    },
+    "archiveExpenseCategory": {
+      "request_model": "ExpenseCategoryStatusRequest",
+      "response": {"shape": "model", "model": "ExpenseCategoryDtoV1", "items_path": null},
+      "notes": []
+    }
+  }
+}

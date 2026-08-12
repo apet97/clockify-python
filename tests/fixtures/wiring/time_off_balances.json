@@ -1,0 +1,29 @@
+{
+  "resource": "time_off_balances",
+  "operations": {
+    "getBalancesForPolicy": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "BalanceListResponse", "items_path": ["balances"]},
+      "notes": [
+        "Envelope pagination: items under `balances`; `page`/`page-size` with authoritative `Last-Page` response header.",
+        "`page`/`page-size` are int32 despite official docs claiming string (documented-prefer-source-bundle)."
+      ]
+    },
+    "getBalanceForUser": {
+      "request_model": null,
+      "response": {"shape": "model", "model": "BalanceListResponse", "items_path": ["balances"]},
+      "notes": [
+        "Envelope pagination: items under `balances`; `page`/`page-size` with authoritative `Last-Page` response header.",
+        "`page`/`page-size` are int32 despite official docs claiming string (documented-prefer-source-bundle).",
+        "Wire returns `balances[].negativeBalanceUsed`; added to BalanceDtoV1 in corrected spec (resolved 2026-07-29)."
+      ]
+    },
+    "updateBalance": {
+      "request_model": "UpdateBalanceRequest",
+      "response": {"shape": "none", "model": null, "items_path": null},
+      "notes": [
+        "Returns 204 with no body."
+      ]
+    }
+  }
+}
