@@ -47,6 +47,7 @@ jobs:
     steps:
       - name: Resolve release inputs
         id: release
+        working-directory: .
         env:
           EVENT_NAME: ${{ github.event_name }}
           EVENT_REF: ${{ github.ref }}
