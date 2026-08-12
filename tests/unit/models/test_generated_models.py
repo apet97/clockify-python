@@ -69,3 +69,23 @@ def test_datetime_fields_stay_strings() -> None:
 def test_unset_optional_fields_are_excluded_from_wire_dump() -> None:
     body = models.TagCreate(name="only-name")
     assert body.model_dump(by_alias=True, exclude_unset=True) == {"name": "only-name"}
+
+
+def test_workspace_survives_live_shapes() -> None:
+    """Live evidence 2026-08-12: features contain enum values missing from the
+    spec, and entityCreationPermissions values are plain strings."""
+    workspace = models.Workspace.model_validate(
+        {
+            "id": "w1",
+            "name": "Sandbox",
+            "features": ["TIME_TRACKING", "WEEKLY_OVERTIME_CALCULATION_PERIOD"],
+            "workspaceSettings": {
+                "entityCreationPermissions": {
+                    "whoCanCreateProjectsAndClients": "ADMINS_AND_PROJECT_MANAGERS",
+                    "whoCanCreateTags": "EVERYONE",
+                    "whoCanCreateTasks": "EVERYONE",
+                }
+            },
+        }
+    )
+    assert workspace.id == "w1"

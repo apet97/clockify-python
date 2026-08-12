@@ -27,6 +27,14 @@ import yaml
 
 EXPECTED_ROOT_COUNT = 339
 
+# Live-evidence leniency (2026-08-12, sacrificial workspace, getWorkspaceInfo):
+# the live API returns plain strings where the corrected spec declares these
+# schemas, and returns feature enum values missing from the spec's closed enum
+# (e.g. WEEKLY_OVERTIME_CALCULATION_PERIOD). References to these schemas are
+# rendered as `<Name> | str` so responses survive; the named types keep the
+# documented shapes.
+STR_UNION_REFS = {"EntityCreationPermission", "WorkspacesFeature"}
+
 # Schemas known to be unreachable from the 168 operations; kept out of the output
 # deliberately (see OPERATION_PORT_MANIFEST.md "Reconciliation findings").
 KNOWN_UNREACHABLE = {
@@ -346,7 +354,10 @@ class Importer:
         m = SCHEMA_REF.match(ref)
         if not m:
             raise UnsupportedSchema(f"{path}: non-schema $ref {ref!r}")
-        return m.group(1)
+        name = m.group(1)
+        if name in STR_UNION_REFS:
+            return f"{name} | str"
+        return name
 
     def render_type(self, schema: Any, path: str) -> str:
         """Render the Python annotation for a schema node (as a quoted-safe string)."""
@@ -472,7 +483,10 @@ class Importer:
         for i, part in enumerate(schema["allOf"]):
             node = part
             if "$ref" in part:
-                node = self.schemas[self.ref_name(part["$ref"], path)]
+                match = SCHEMA_REF.match(part["$ref"])
+                if not match:
+                    raise UnsupportedSchema(f"{path}: non-schema allOf $ref")
+                node = self.schemas[match.group(1)]
             if not (node.get("type") == "object" or "properties" in node):
                 raise UnsupportedSchema(f"{path}/allOf[{i}]: non-object allOf part")
             merged_props.update(node.get("properties", {}))

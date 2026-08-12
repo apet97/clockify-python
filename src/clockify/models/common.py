@@ -79,13 +79,13 @@ class EntityCreationPermission(ClockifyResponseModel):
 class EntityCreationPermissionsDtoV1(ClockifyResponseModel):
     """Represents an entity creation permission object."""
 
-    who_can_create_projects_and_clients: EntityCreationPermission | None = Field(
+    who_can_create_projects_and_clients: EntityCreationPermission | str | None = Field(
         default=None, alias="whoCanCreateProjectsAndClients"
     )
-    who_can_create_tags: EntityCreationPermission | None = Field(
+    who_can_create_tags: EntityCreationPermission | str | None = Field(
         default=None, alias="whoCanCreateTags"
     )
-    who_can_create_tasks: EntityCreationPermission | None = Field(
+    who_can_create_tasks: EntityCreationPermission | str | None = Field(
         default=None, alias="whoCanCreateTasks"
     )
 
@@ -240,7 +240,7 @@ class Workspace(ClockifyResponseModel):
     cost_rate: WorkspacesRateDtoV1 | None = Field(default=None, alias="costRate")
     currencies: list[CurrencyWithDefaultInfoDtoV1] | None = None
     feature_subscription_type: str | None = Field(default=None, alias="featureSubscriptionType")
-    features: list[WorkspacesFeature] | None = None
+    features: list[WorkspacesFeature | str] | None = None
     hourly_rate: WorkspacesRateDtoV1 | None = Field(default=None, alias="hourlyRate")
     id: str | None = None
     image_url: str | None = Field(default=None, alias="imageUrl")
