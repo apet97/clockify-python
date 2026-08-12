@@ -74,21 +74,31 @@ reviewer subagent report at docs/mcp-write-safety-review.md.
 - Pydantic seams proven: alias round-trip incl. `page-size`, extra forbid/allow with
   `model_extra`, RootModel arrays, None-vs-unset serialization split.
 
-## Last known green commands
-- `spikes/verify_counts.py`, `spikes/spike_mcp.py`, `spikes/spike_stdio_client.py`,
-  pydantic seam one-liner (all Phase 0, deleted after recording).
+## Last known green commands (2026-08-12)
+- uv run ruff check . / ruff format --check . / pyright  → clean
+- uv run pytest -q -m "not live"  → 397 passed
+- uv run pytest -q -m live  → 5 passed (see Live-test runs)
+- uv build; wheel[mcp] install into clean venvs (3.14 + 3.11): SDK import,
+  `clockify-mcp --help`, and real stdio list_tools (65) all green.
 
 ## Current work in progress
-Starting Phase 1 skeleton.
+Phase 8 finale: fresh-context adversarial review subagent running; its report
+lands at docs/mcp-write-safety-review.md. Then fix findings, then Phase 9 waves.
 
 ## Unresolved evidence questions / real blockers
-(none yet)
+- Target-host human-approval UI evidence (2 real hosts) — unmet ship condition,
+  requires interactive host products; MCP writes stay unregistered.
+- Several PUT omission rules remain UNKNOWN_CONSERVATIVE per manifest.
 
 ## Live-test runs
-(none yet)
+- Run 2026-08-12, prefix `py115-<random>` (fresh per run): me/workspace identity,
+  read smoke, Last-Page header, tag create→get→full-replace-archive→delete,
+  project create→delete-403-proof→archive→delete. Residue: 0 (asserted in-suite).
 
 ## Material deviations from blueprint
-(none)
+- Live workspace shapes: `features` enum open; `entityCreationPermissions`
+  values plain strings → importer STR_UNION_REFS + regression test (f510d21).
+- See "Design decisions worth knowing" above for structural choices.
 
 ## Next exact action
 Phase 8: implement clockify_mcp/writes/ per MCP_WRITE_SAFETY_PLAN.md (read its
@@ -96,8 +106,4 @@ Components/Data contracts/Nonce store/State machine/Adversarial catalogue sectio
 prove with a fake write executor + adversarial tests, then fresh-context review at
 docs/mcp-write-safety-review.md. No write tool registration.
 
-## (superseded)
-Create Phase 1 skeleton: pyproject.toml (hatchling, dist `clockify-python-115`,
-py>=3.11, `[mcp]` extra), src/clockify + src/clockify_mcp empty packages,
-`clockify-mcp` stderr-stub entry point, ruff/pyright/pytest config, ci.yml,
-README/LICENSE/SECURITY, then `uv sync --all-extras --dev` + gates + `uv build`.
+
