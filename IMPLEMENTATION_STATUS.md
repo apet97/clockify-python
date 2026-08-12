@@ -15,10 +15,11 @@ Distribution `clockify-python-115`, console `clockify-mcp`.
 - Initial tracked status: clean (no tracked modifications).
 
 ## Current phase
-Phase 8 — MCP write-safety core (no registered writes).
-Acceptance target: every safety invariant/adversarial case in
-docs/port/MCP_WRITE_SAFETY_PLAN.md proven against a fake write; fresh-context
-reviewer subagent report at docs/mcp-write-safety-review.md.
+COMPLETE (2026-08-12). All ten phases implemented; final gates green; wheel
+smokes green; live suite green with zero residue. MCP writes: safety core +
+wave-1 adapter proven; release registration remains read-only because two ship
+conditions are structurally unmeetable here (independent human review, two real
+host approval-UI proofs).
 
 ## Design decisions worth knowing (deviations documented)
 - ReadOnlyExecutor lives in clockify._transport.executor (re-exported by
@@ -82,8 +83,19 @@ reviewer subagent report at docs/mcp-write-safety-review.md.
   `clockify-mcp --help`, and real stdio list_tools (65) all green.
 
 ## Current work in progress
-Phase 8 finale: fresh-context adversarial review subagent running; its report
-lands at docs/mcp-write-safety-review.md. Then fix findings, then Phase 9 waves.
+(none — implementation complete)
+
+## Completed phases (later)
+- Phase 8 (689bdaf, 6201ee0): write-safety core (canonical/plan/nonce/gate/
+  executor/reconcile), 62 adversarial tests, fresh-context adversarial review at
+  docs/mcp-write-safety-review.md; all findings (P,A,B,C,T,X,D,E) fixed.
+- Phase 9 wave 1 (4de8c4b): clockify_tags_create through the full gate;
+  build_approved_server separate from the shipped read-only server; live Phase G
+  proof green, zero residue. Later waves deliberately deferred: each write needs
+  individual review and host-UI evidence per plan; batching them is forbidden.
+- Phase 10: docs (architecture/api-deviations/mcp/live-tests), README,
+  CHANGELOG, examples/sdk_quickstart.py, uv build, clean-venv wheel[mcp] smokes
+  (3.14 + 3.11), console + real-stdio smoke (65 tools), live suite 6/6.
 
 ## Unresolved evidence questions / real blockers
 - Target-host human-approval UI evidence (2 real hosts) — unmet ship condition,
@@ -101,9 +113,9 @@ lands at docs/mcp-write-safety-review.md. Then fix findings, then Phase 9 waves.
 - See "Design decisions worth knowing" above for structural choices.
 
 ## Next exact action
-Phase 8: implement clockify_mcp/writes/ per MCP_WRITE_SAFETY_PLAN.md (read its
-Components/Data contracts/Nonce store/State machine/Adversarial catalogue sections),
-prove with a fake write executor + adversarial tests, then fresh-context review at
-docs/mcp-write-safety-review.md. No write tool registration.
+Nothing pending in-code. Remaining work is external: (1) independent human
+adversarial review of clockify_mcp/writes; (2) approval-UI evidence on two real
+MCP hosts; (3) then wave-2+ write adapters one reviewed tool at a time; (4)
+optional PyPI publish via explicit release workflow (never done automatically).
 
 
