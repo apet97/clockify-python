@@ -127,7 +127,7 @@ async def test_just_before_ttl_still_valid() -> None:
 
 async def test_capacity_boundary_and_prune_first() -> None:
     clock = Clock()
-    store = InMemoryNonceStore(max_pending=2, clock=clock)
+    store = InMemoryNonceStore(max_entries=2, clock=clock)
     await store.get_or_issue(**issue_kwargs(make_plan("a"), key="k1"))
     await store.get_or_issue(**issue_kwargs(make_plan("b"), key="k2"))
     with pytest.raises(StoreAtCapacity):
@@ -136,6 +136,38 @@ async def test_capacity_boundary_and_prune_first() -> None:
     clock.now += 301.0
     third = await store.get_or_issue(**issue_kwargs(make_plan("c"), key="k3"))
     assert third.nonce
+
+
+async def test_consumed_tombstone_uses_combined_capacity_until_expiry() -> None:
+    clock = Clock()
+    store = InMemoryNonceStore(max_entries=1, clock=clock)
+    first = await store.get_or_issue(**issue_kwargs(make_plan("a"), key="k1"))
+    await store.consume(**consume_kwargs(first))
+    with pytest.raises(StoreAtCapacity):
+        await store.get_or_issue(**issue_kwargs(make_plan("b"), key="k2"))
+    with pytest.raises(ConfirmationAlreadyUsed):
+        await store.consume(**consume_kwargs(first))
+    clock.now += 301.0
+    second = await store.get_or_issue(**issue_kwargs(make_plan("b"), key="k2"))
+    assert second.nonce
+
+
+async def test_concurrent_issuance_never_exceeds_combined_capacity() -> None:
+    store = InMemoryNonceStore(max_entries=4)
+    issued = await asyncio.gather(
+        *(
+            store.get_or_issue(**issue_kwargs(make_plan(str(index)), key=f"k{index}"))
+            for index in range(20)
+        ),
+        return_exceptions=True,
+    )
+    records = [item for item in issued if not isinstance(item, Exception)]
+    failures = [item for item in issued if isinstance(item, Exception)]
+    assert len(records) == 4
+    assert all(isinstance(item, StoreAtCapacity) for item in failures)
+    await asyncio.gather(*(store.consume(**consume_kwargs(record)) for record in records))
+    with pytest.raises(StoreAtCapacity):
+        await store.get_or_issue(**issue_kwargs(make_plan("next"), key="next"))
 
 
 async def test_plan_byte_boundary() -> None:

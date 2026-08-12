@@ -1,6 +1,7 @@
 """Immutable write plans, exact wire binding, and the deterministic preview."""
 
-from dataclasses import dataclass
+import base64
+from dataclasses import dataclass, fields, is_dataclass
 from typing import Any
 
 from clockify.operations.model import Operation
@@ -107,6 +108,22 @@ class WritePlan:
             "warnings": list(self.warnings),
         }
         return digest_of(material)
+
+
+def _retained_value(value: Any) -> Any:
+    """Convert retained plan data to one canonical, future-field-safe shape."""
+    if is_dataclass(value) and not isinstance(value, type):
+        return {field.name: _retained_value(getattr(value, field.name)) for field in fields(value)}
+    if isinstance(value, bytes):
+        return {"$bytes_base64": base64.b64encode(value).decode("ascii")}
+    if isinstance(value, tuple):
+        return [_retained_value(item) for item in value]
+    return value
+
+
+def retained_plan_bytes(plan: WritePlan) -> bytes:
+    """Canonical UTF-8 representation of every dataclass field retained by a plan."""
+    return canonical_json(_retained_value(plan))
 
 
 @dataclass(frozen=True, slots=True)

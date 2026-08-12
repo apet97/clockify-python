@@ -11,7 +11,7 @@ import secrets
 import time
 from dataclasses import dataclass
 
-from clockify_mcp.writes.plan import PreparedWrite, WritePlan
+from clockify_mcp.writes.plan import PreparedWrite, WritePlan, retained_plan_bytes
 
 
 class WriteSafetyError(Exception):
@@ -63,12 +63,12 @@ class InMemoryNonceStore:
         self,
         *,
         ttl: float = 300.0,
-        max_pending: int = 128,
+        max_entries: int = 128,
         max_plan_bytes: int = 256 * 1024,
         clock: "callable | None" = None,  # type: ignore[type-arg]
     ) -> None:
         self._ttl = ttl
-        self._max_pending = max_pending
+        self._max_entries = max_entries
         self._max_plan_bytes = max_plan_bytes
         self._clock = clock or time.monotonic
         self._lock = asyncio.Lock()
@@ -90,32 +90,8 @@ class InMemoryNonceStore:
                 del self._tombstones[nonce]
 
     def _plan_size(self, plan: WritePlan) -> int:
-        """Byte size of everything the record retains (review finding A: every
-        stored string counts, or the 256 KiB cap is bypassable via warnings/
-        summary/preconditions)."""
-        total = 0
-        for step in plan.steps:
-            if step.body_json is not None:
-                total += len(step.body_json)
-            total += sum(len(k) + len(v) for k, v in step.path_arguments)
-            total += sum(len(k) + len(v) for k, v in step.query)
-            total += sum(len(k) + len(v) for k, v in step.multipart_fields)
-            for file_digest in step.files:
-                total += (
-                    len(file_digest.field_name)
-                    + len(file_digest.filename)
-                    + len(file_digest.content_type)
-                    + len(file_digest.sha256)
-                )
-        for preview_field in plan.preview_fields:
-            total += len(preview_field.label) + len(preview_field.value)
-        total += len(plan.title) + len(plan.summary) + len(plan.effect)
-        total += len(plan.scope) + len(plan.reversibility)
-        total += sum(len(s) for s in plan.sensitivity)
-        total += sum(len(w) for w in plan.warnings)
-        for precondition in plan.preconditions:
-            total += len(precondition.description) + len(precondition.fingerprint)
-        return total
+        """Encoded byte size of the complete retained plan representation."""
+        return len(retained_plan_bytes(plan))
 
     async def get_or_issue(
         self,
@@ -152,9 +128,9 @@ class InMemoryNonceStore:
                 del self._pending[key]
             if self._plan_size(plan) > self._max_plan_bytes:
                 raise PlanTooLarge(f"canonical plan exceeds {self._max_plan_bytes} bytes")
-            if len(self._pending) >= self._max_pending:
+            if len(self._pending) + len(self._tombstones) >= self._max_entries:
                 raise StoreAtCapacity(
-                    f"{self._max_pending} confirmations already pending; retry later"
+                    f"{self._max_entries} live confirmations already retained; retry later"
                 )
             now = self._now()
             record = PreparedWrite(
