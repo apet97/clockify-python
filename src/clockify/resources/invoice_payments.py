@@ -1,5 +1,6 @@
 """Invoice payments resource: explicit methods over the invoice-payment operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -54,7 +55,7 @@ class InvoicePaymentsResource(ResourceBase):
         workspace_id: str | None = None,
         page: int | None = None,
         page_size: int | None = None,
-    ) -> list[InvoicePaymentDto]:
+    ) -> builtins.list[InvoicePaymentDto]:
         response = await self._call(
             INVOICE_PAYMENTS_LIST,
             path={"workspaceId": self._workspace(workspace_id), "invoiceId": invoice_id},

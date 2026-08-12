@@ -1,5 +1,6 @@
 """Invoices resource: explicit methods over the invoice operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -101,7 +102,7 @@ class InvoicesResource(ResourceBase):
         workspace_id: str | None = None,
         page: int | None = None,
         page_size: int | None = None,
-        statuses: list[str] | None = None,
+        statuses: builtins.list[str] | None = None,
         sort_column: str | None = None,
         sort_order: str | None = None,
     ) -> InvoiceListResponse:

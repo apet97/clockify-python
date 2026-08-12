@@ -2,16 +2,16 @@
 
 from typing import Any
 
-from clockify.client import ClockifyClient
 from clockify.errors import (
     ClockifyAPIError,
     ClockifyAuthenticationError,
     ClockifyError,
 )
 from clockify_mcp.context import ServerConfig
+from clockify_mcp.read_capability import WorkflowReadClient
 
 
-async def doctor(client: ClockifyClient, config: ServerConfig) -> dict[str, Any]:
+async def doctor(client: WorkflowReadClient, config: ServerConfig) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
 
     def record(name: str, ok: bool, detail: str) -> None:

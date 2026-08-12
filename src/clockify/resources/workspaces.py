@@ -1,5 +1,6 @@
 """Workspaces resource: explicit methods over the workspace operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -35,7 +36,7 @@ class WorkspacesResource(ResourceBase):
         )
         return self._adapt(WORKSPACES_GET, response, Workspace)
 
-    async def list(self, *, roles: list[str] | None = None) -> list[Workspace]:
+    async def list(self, *, roles: builtins.list[str] | None = None) -> builtins.list[Workspace]:
         """No server-side paging: the full collection returns; `roles` is a repeated key."""
         response = await self._call(WORKSPACES_LIST, path={}, query={"roles": roles})
         return self._adapt(WORKSPACES_LIST, response, _WORKSPACE_LIST)

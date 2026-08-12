@@ -1,5 +1,6 @@
 """Users resource: explicit methods over the user operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -80,7 +81,7 @@ class UsersResource(ResourceBase):
         body: "UserFilterRequest | Mapping[str, Any]",
         *,
         workspace_id: str | None = None,
-    ) -> list[UserDtoV1]:
+    ) -> builtins.list[UserDtoV1]:
         """Non-mutating filter POST."""
         validated = self._coerce(body, UserFilterRequest)
         response = await self._call(
@@ -96,7 +97,7 @@ class UsersResource(ResourceBase):
         body: "ManagerRoleRequest | Mapping[str, Any]",
         *,
         workspace_id: str | None = None,
-    ) -> list[RoleAssignmentDtoV1]:
+    ) -> builtins.list[RoleAssignmentDtoV1]:
         validated = self._coerce(body, ManagerRoleRequest)
         response = await self._call(
             USERS_GRANT_MANAGER_ROLE,

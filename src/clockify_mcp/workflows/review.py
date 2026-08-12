@@ -8,9 +8,9 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from clockify.client import ClockifyClient
 from clockify.errors import ClockifyError
 from clockify_mcp.errors import ToolError, to_tool_error
+from clockify_mcp.read_capability import WorkflowReadClient
 
 _PAGE_SIZE = 200
 _MAX_PAGES = 5  # bounded pagination; the result flags truncation
@@ -38,7 +38,7 @@ def _parse_date(value: str, field: str) -> date:
 
 
 async def _entries_between(
-    client: ClockifyClient, workspace_id: str, user_id: str, start: str, end: str
+    client: WorkflowReadClient, workspace_id: str, user_id: str, start: str, end: str
 ) -> tuple[list[dict[str, Any]], bool]:
     entries: list[dict[str, Any]] = []
     truncated = False
@@ -72,7 +72,7 @@ async def _entries_between(
 
 
 async def _resolve_scope(
-    client: ClockifyClient, workspace_id: str | None, user_id: str | None
+    client: WorkflowReadClient, workspace_id: str | None, user_id: str | None
 ) -> tuple[str, str]:
     resolved_workspace = workspace_id or client.workspace_id
     if user_id is None or resolved_workspace is None:
@@ -87,7 +87,7 @@ async def _resolve_scope(
 
 
 async def review_day(
-    client: ClockifyClient,
+    client: WorkflowReadClient,
     day: str,
     *,
     timezone_name: str = "UTC",
@@ -123,7 +123,7 @@ async def review_day(
 
 
 async def review_week(
-    client: ClockifyClient,
+    client: WorkflowReadClient,
     start_day: str,
     *,
     timezone_name: str = "UTC",

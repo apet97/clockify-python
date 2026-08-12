@@ -1,5 +1,6 @@
 """Clients resource: explicit methods over the client operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -56,7 +57,7 @@ class ClientsResource(ResourceBase):
         sort_order: str | None = None,
         page: int | None = None,
         page_size: int | None = None,
-    ) -> list[Client]:
+    ) -> builtins.list[Client]:
         """Omitting archived returns archived AND active rows; archived=false restricts to active."""
         response = await self._call(
             CLIENTS_LIST,

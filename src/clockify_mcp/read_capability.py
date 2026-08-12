@@ -1,0 +1,81 @@
+"""Smallest readable capability handed to the five workflows (review finding F3).
+
+Workflow implementations receive a `WorkflowReadClient`, never a full
+`ClockifyClient`. Its ordinary API exposes only the read calls the workflows
+use: no `raw.call`, no mutating resource methods, no executor attribute, and
+no general dispatch. This narrows the workflow layer's authority; the
+`ReadOnlyExecutor` wrapped inside the server's client remains the final
+runtime enforcement boundary for anything that slips past it. Python cannot
+stop deliberate rewriting of trusted package source — this is a capability
+discipline plus a tested tripwire, not a sandbox.
+"""
+
+from clockify.client import ClockifyClient
+
+
+class _UsersReads:
+    __slots__ = ("list", "me")
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.me = client.users.me
+        self.list = client.users.list
+
+
+class _WorkspacesReads:
+    __slots__ = ("get",)
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.get = client.workspaces.get
+
+
+class _TimeEntriesReads:
+    __slots__ = ("list_for_user", "list_in_progress")
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.list_in_progress = client.time_entries.list_in_progress
+        self.list_for_user = client.time_entries.list_for_user
+
+
+class _ProjectsReads:
+    __slots__ = ("get", "list")
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.list = client.projects.list
+        self.get = client.projects.get
+
+
+class _TagsReads:
+    __slots__ = ("list",)
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.list = client.tags.list
+
+
+class _ReportsReads:
+    __slots__ = ("weekly",)
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.weekly = client.reports.weekly
+
+
+class WorkflowReadClient:
+    """Read-only facade over exactly the calls the five workflows require."""
+
+    __slots__ = (
+        "projects",
+        "reports",
+        "tags",
+        "time_entries",
+        "users",
+        "workspace_id",
+        "workspaces",
+    )
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.workspace_id = client.workspace_id
+        self.users = _UsersReads(client)
+        self.workspaces = _WorkspacesReads(client)
+        self.time_entries = _TimeEntriesReads(client)
+        self.projects = _ProjectsReads(client)
+        self.tags = _TagsReads(client)
+        self.reports = _ReportsReads(client)

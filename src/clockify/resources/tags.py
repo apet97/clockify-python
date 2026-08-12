@@ -1,5 +1,6 @@
 """Tags resource: explicit methods over the tag operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -47,13 +48,13 @@ class TagsResource(ResourceBase):
         workspace_id: str | None = None,
         name: str | None = None,
         strict_name_search: str | None = None,
-        excluded_ids: list[str] | None = None,
+        excluded_ids: builtins.list[str] | None = None,
         sort_column: str | None = None,
         sort_order: str | None = None,
         page: int | None = None,
         page_size: int | None = None,
         archived: bool | None = None,
-    ) -> list[TagDto]:
+    ) -> builtins.list[TagDto]:
         response = await self._call(
             TAGS_LIST,
             path={"workspaceId": self._workspace(workspace_id)},

@@ -1,5 +1,6 @@
 """Projects resource: explicit methods over the project operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -102,10 +103,10 @@ class ProjectsResource(ResourceBase):
         strict_name_search: str | None = None,
         archived: bool | None = None,
         billable: bool | None = None,
-        clients: list[str] | None = None,
+        clients: builtins.list[str] | None = None,
         contains_client: bool | None = None,
         client_status: str | None = None,
-        users: list[str] | None = None,
+        users: builtins.list[str] | None = None,
         contains_user: bool | None = None,
         user_status: str | None = None,
         is_template: bool | None = None,
@@ -117,9 +118,9 @@ class ProjectsResource(ResourceBase):
         access: str | None = None,
         expense_limit: int | None = None,
         expense_date: str | None = None,
-        user_groups: list[str] | None = None,
+        user_groups: builtins.list[str] | None = None,
         contains_group: bool | None = None,
-    ) -> list[Project]:
+    ) -> builtins.list[Project]:
         """Omitting `archived` returns archived AND active rows; only archived=false restricts."""
         response = await self._call(
             PROJECTS_LIST,

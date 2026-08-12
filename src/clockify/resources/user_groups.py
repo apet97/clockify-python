@@ -1,5 +1,6 @@
 """User groups resource: explicit methods over the user-group operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -68,7 +69,7 @@ class UserGroupsResource(ResourceBase):
         page: int | None = None,
         page_size: int | None = None,
         include_team_managers: bool | None = None,
-    ) -> list[UserGroupDtoV1]:
+    ) -> builtins.list[UserGroupDtoV1]:
         response = await self._call(
             USER_GROUPS_LIST,
             path={"workspaceId": self._workspace(workspace_id)},

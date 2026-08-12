@@ -1,5 +1,6 @@
 """Tasks resource: explicit methods over the task operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -79,7 +80,7 @@ class TasksResource(ResourceBase):
         page_size: int | None = None,
         sort_column: str | None = None,
         sort_order: str | None = None,
-    ) -> list[Task]:
+    ) -> builtins.list[Task]:
         response = await self._call(
             TASKS_LIST,
             path={

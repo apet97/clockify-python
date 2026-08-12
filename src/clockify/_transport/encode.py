@@ -47,6 +47,12 @@ def render_path(operation: Operation, path_args: dict[str, Any]) -> str:
             raise ClockifyConfigurationError(
                 f"{operation.operation_id}: path parameter {name!r} must be a non-empty string"
             )
+        if value in (".", ".."):
+            # httpx normalizes dot segments, which would retarget the request
+            # within the same service (review finding F4).
+            raise ClockifyConfigurationError(
+                f"{operation.operation_id}: path parameter {name!r} must not be a dot segment"
+            )
         rendered = rendered.replace("{" + name + "}", quote(value, safe=""))
     return rendered
 

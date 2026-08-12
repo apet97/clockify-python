@@ -185,6 +185,7 @@ class InMemoryNonceStore:
         nonce: str,
         principal_id: str,
         tool_name: str,
+        workspace_id: str | None,
         arguments_digest: str,
         plan_digest: str,
     ) -> ExecutionPermit:
@@ -206,12 +207,13 @@ class InMemoryNonceStore:
             checks = (
                 hmac.compare_digest(record.principal_id, principal_id),
                 hmac.compare_digest(record.tool_name, tool_name),
+                record.workspace_id == workspace_id,  # F2: consume-time workspace binding
                 hmac.compare_digest(record.arguments_digest, arguments_digest),
                 hmac.compare_digest(record.plan_digest, plan_digest),
             )
             if not all(checks):
                 raise ConfirmationMismatch(
-                    "confirmation does not match this principal/tool/arguments/plan"
+                    "confirmation does not match this principal/tool/workspace/arguments/plan"
                 )
             del self._pending[key]
             self._by_nonce.pop(nonce, None)

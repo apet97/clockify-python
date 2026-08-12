@@ -52,6 +52,7 @@ class WriteGate:
             nonce=prepared.nonce,
             principal_id=prepared.principal_id,
             tool_name=prepared.tool_name,
+            workspace_id=prepared.workspace_id,
             arguments_digest=prepared.arguments_digest,
             plan_digest=prepared.plan_digest,
         )

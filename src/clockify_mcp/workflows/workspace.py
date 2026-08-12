@@ -2,15 +2,15 @@
 
 from typing import Any
 
-from clockify.client import ClockifyClient
 from clockify.errors import ClockifyError
 from clockify_mcp.errors import ToolError, to_tool_error
+from clockify_mcp.read_capability import WorkflowReadClient
 
 _SAMPLE_PAGE_SIZE = 50  # bounded: one page per entity type, never a full crawl
 
 
 async def workspace_overview(
-    client: ClockifyClient, workspace_id: str | None = None
+    client: WorkflowReadClient, workspace_id: str | None = None
 ) -> dict[str, Any]:
     resolved = workspace_id or client.workspace_id
     try:

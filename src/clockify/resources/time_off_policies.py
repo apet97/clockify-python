@@ -1,5 +1,6 @@
 """Time-off policies resource: explicit methods over the time-off policy operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -64,7 +65,7 @@ class TimeOffPoliciesResource(ResourceBase):
         status: str | None = None,
         sort_column: str | None = None,
         sort_order: str | None = None,
-    ) -> list[Policy]:
+    ) -> builtins.list[Policy]:
         response = await self._call(
             TIME_OFF_POLICIES_LIST,
             path={"workspaceId": self._workspace(workspace_id)},

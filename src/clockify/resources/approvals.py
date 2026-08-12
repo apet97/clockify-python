@@ -1,5 +1,6 @@
 """Approvals resource: explicit methods over the approval-request operations."""
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 
@@ -34,11 +35,11 @@ class ApprovalsResource(ResourceBase):
         workspace_id: str | None = None,
         status: str | None = None,
         sort_column: str | None = None,
-        types: list[str] | None = None,
+        types: builtins.list[str] | None = None,
         sort_order: str | None = None,
         page: int | None = None,
         page_size: int | None = None,
-    ) -> list[ApprovalRequestListItem]:
+    ) -> builtins.list[ApprovalRequestListItem]:
         response = await self._call(
             APPROVALS_LIST,
             path={"workspaceId": self._workspace(workspace_id)},

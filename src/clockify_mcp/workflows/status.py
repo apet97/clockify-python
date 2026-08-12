@@ -2,12 +2,12 @@
 
 from typing import Any
 
-from clockify.client import ClockifyClient
 from clockify.errors import ClockifyError
 from clockify_mcp.errors import to_tool_error
+from clockify_mcp.read_capability import WorkflowReadClient
 
 
-async def status(client: ClockifyClient) -> dict[str, Any]:
+async def status(client: WorkflowReadClient) -> dict[str, Any]:
     try:
         me = await client.users.me()
         workspace_id = client.workspace_id or me.default_workspace or me.active_workspace
