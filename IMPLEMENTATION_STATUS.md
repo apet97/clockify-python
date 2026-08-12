@@ -15,10 +15,23 @@ Distribution `clockify-python-115`, console `clockify-mcp`.
 - Initial tracked status: clean (no tracked modifications).
 
 ## Current phase
-Phase 1 — minimal repository skeleton.
-Acceptance target: clean env `uv sync`, import both packages, empty tests pass, `uv build`.
+Phase 4 — all 168 explicit SDK methods + public wiring suite.
+Acceptance target: every manifest method callable; 168-case wiring tests through
+MockTransport assert op id, host, method, path, query, body encoding, response adapter.
 
 ## Completed phases
+- Phase 1 skeleton (commit 4f81dcd): pyproject/uv/ruff/pyright/pytest/ci, wheel smoke green.
+- Phase 2 models (c317786 + tests): importer `scripts/import_openapi.py` (fail-closed),
+  339 roots → 30 domain modules + explicit __init__; request extra=forbid /
+  response extra=allow proven; importer fixture tests.
+- Phase 2 registry + Phase 3 transport (ee38c60): 168 hand-authored Operation records in
+  29 domain modules (six extraction subagents, main-thread verified against spec —
+  tests/contract/test_complete_surface.py all green incl. byte-exact path/query check);
+  HttpExecutor + ReadOnlyExecutor + auth/hosts/encode/decode + raw escape hatch;
+  45 transport tests (retry boundary incl. GET-write trap, outcome-unknown, cancellation,
+  redirects refused, custom-host opt-in, multipart, content-negotiation).
+  Wiring fixtures for Phase 4 at tests/fixtures/wiring/*.json (168 ops, request/response
+  model names + deviation notes).
 - Phase 0 (spike scripts deleted; conclusions below). Counts verified from spec+manifest:
   168 ops, 62 non-mutating (49 GET + 13 POST), 106 mutating, hosts 157/10/1,
   exactly 3 multipart (uploadImage, createExpense, updateExpense — spec omits the
@@ -60,7 +73,13 @@ Starting Phase 1 skeleton.
 ## Material deviations from blueprint
 (none)
 
-## Next exact action
+## Next exact action (when resuming mid-Phase 4)
+Six subagents are writing src/clockify/resources/*.py + tests/contract/wiring/*.py
+(exemplar: tags). When all 29 exist: run full gates, fix failures, verify
+tests/contract/test_public_method_wiring.py (168 coverage), commit, then Phase 5
+deviation tests (pagination.py/money.py + tests already in place).
+
+## (superseded)
 Create Phase 1 skeleton: pyproject.toml (hatchling, dist `clockify-python-115`,
 py>=3.11, `[mcp]` extra), src/clockify + src/clockify_mcp empty packages,
 `clockify-mcp` stderr-stub entry point, ruff/pyright/pytest config, ci.yml,

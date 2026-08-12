@@ -159,22 +159,23 @@ class HttpExecutor:
         headers: dict[str, str],
         timeout: httpx.Timeout | None,
     ) -> httpx.Response:
-        try:
-            return await self._client.request(
-                compiled.method,
-                compiled.url,
-                params=list(compiled.params) or None,
-                json=compiled.json_body,
-                data=compiled.form_data,
-                files=list(compiled.files) or None,
-                headers=headers,
-                timeout=timeout if timeout is not None else DEFAULT_TIMEOUT,
-                follow_redirects=False,
-            )
-        finally:
-            # httpx reads the body eagerly for non-streaming requests; every
-            # response object is closed by json()/content access or aclose().
-            pass
+        files_arg: list[Any] | None = None
+        if compiled.files or compiled.form_data is not None:
+            # Multipart operation. Form fields ride as filename-less parts so the
+            # encoding stays multipart/form-data even with no file attached.
+            files_arg = list(compiled.files)
+            for field_name, field_value in (compiled.form_data or {}).items():
+                files_arg.append((field_name, (None, field_value)))
+        return await self._client.request(
+            compiled.method,
+            compiled.url,
+            params=list(compiled.params) or None,
+            json=compiled.json_body,
+            files=files_arg,
+            headers=headers,
+            timeout=timeout if timeout is not None else DEFAULT_TIMEOUT,
+            follow_redirects=False,
+        )
 
     def _transport_error(
         self, operation: Operation, exc: httpx.TransportError
