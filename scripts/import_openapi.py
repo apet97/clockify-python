@@ -410,6 +410,17 @@ class Importer:
                 if field_hint in ("items", "additionalProperties"):
                     field_hint = path.rsplit("/", 3)[-3] + "Item"
                 return self._inline_class(schema, path, field_hint)
+            unknown = set(schema) - {
+                "type",
+                "additionalProperties",
+                "description",
+                "example",
+                "nullable",
+                "default",
+                "title",
+            }
+            if unknown:
+                raise UnsupportedSchema(f"{path}: unsupported object keys {sorted(unknown)}")
             ap = schema.get("additionalProperties")
             if isinstance(ap, dict):
                 return f"dict[str, {self.render_type(ap, path + '/additionalProperties')}]"
