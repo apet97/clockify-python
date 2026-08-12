@@ -15,18 +15,41 @@ Distribution `clockify-python-115`, console `clockify-mcp`.
 - Initial tracked status: clean (no tracked modifications).
 
 ## Current phase
-Phase 0 — evidence verification and framework spikes.
-Acceptance target: counts verified (168/62/106/49/13, 157/10/1 hosts, 3 multipart,
-339 roots), unique (resource, method) pairs, MCP v2 spike proofs, stdout-clean stdio.
+Phase 1 — minimal repository skeleton.
+Acceptance target: clean env `uv sync`, import both packages, empty tests pass, `uv build`.
 
 ## Completed phases
-(none yet)
+- Phase 0 (spike scripts deleted; conclusions below). Counts verified from spec+manifest:
+  168 ops, 62 non-mutating (49 GET + 13 POST), 106 mutating, hosts 157/10/1,
+  exactly 3 multipart (uploadImage, createExpense, updateExpense — spec omits the
+  expense request bodies; manifest is authoritative), 339 reachable schema roots
+  (closure must traverse components/parameters+responses+requestBodies), 6 unreachable
+  schemas match manifest. All (resource, method) pairs unique, none a Python keyword.
+
+### Phase 0 MCP v2 seam facts (mcp 2.0.0, pydantic 2.13.4)
+- Imports: `from mcp.server import MCPServer`; `from mcp.server.mcpserver import Elicit, Resolve`;
+  `from mcp.server.request_state import RequestStateSecurity` (kwargs `keys=[32B]`,
+  `bind_principal=fn(ctx)->str|None`, `ttl`); pass as `MCPServer(request_state_security=...)`.
+- Tool registration: `@server.tool()`; resolver params must be tool-argument names,
+  `Context`, or nested `Resolve`. Resolved params stay out of `tool.input_schema` (proven).
+- In-memory testing: `mcp.Client(server, elicitation_callback=..., mode="legacy"|"auto")`;
+  high-level `client.call_tool` drives MRTR rounds; low-level
+  `client.session.call_tool(..., allow_input_required=True, input_responses={id: {...}},
+  request_state=...)` exposes raw rounds. `InputRequiredResult.input_requests` maps id→request.
+- PROVEN: byte-identical `request_state` replay passes integrity and dispatches the tool
+  body twice → server-side atomic nonce store is mandatory (plan confirmed).
+- PROVEN: legacy mode (`mode="legacy"`) resolves the same Elicit resolver.
+- PROVEN: real stdio (`server.run(transport="stdio")` + `mcp.client.stdio.stdio_client`)
+  keeps stdout protocol-clean while server logs to stderr.
+- Pydantic seams proven: alias round-trip incl. `page-size`, extra forbid/allow with
+  `model_extra`, RootModel arrays, None-vs-unset serialization split.
 
 ## Last known green commands
-(none yet)
+- `spikes/verify_counts.py`, `spikes/spike_mcp.py`, `spikes/spike_stdio_client.py`,
+  pydantic seam one-liner (all Phase 0, deleted after recording).
 
 ## Current work in progress
-Phase 0 startup: continuity files created; git init next.
+Starting Phase 1 skeleton.
 
 ## Unresolved evidence questions / real blockers
 (none yet)
@@ -38,5 +61,7 @@ Phase 0 startup: continuity files created; git init next.
 (none)
 
 ## Next exact action
-Initialize git, commit continuity + blueprint files, then run Phase 0 count
-verification against the corrected OpenAPI and manifest.
+Create Phase 1 skeleton: pyproject.toml (hatchling, dist `clockify-python-115`,
+py>=3.11, `[mcp]` extra), src/clockify + src/clockify_mcp empty packages,
+`clockify-mcp` stderr-stub entry point, ruff/pyright/pytest config, ci.yml,
+README/LICENSE/SECURITY, then `uv sync --all-extras --dev` + gates + `uv build`.
