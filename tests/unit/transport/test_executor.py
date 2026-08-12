@@ -33,6 +33,7 @@ from clockify.operations.model import (
     Service,
 )
 from clockify.response import BinaryResponse, TextResponse
+from clockify_mcp.errors import to_tool_error
 
 READ_SEMANTICS = OperationSemantics(
     mutates=False, effect=MutationEffect.NONE, replacement=ReplacementSemantics.NOT_APPLICABLE
@@ -266,6 +267,62 @@ class TestHeaders:
         )
         assert seen[0].headers["User-Agent"] == "custom-agent"
         assert seen[0].headers["X-Request-Id"] == "rid-1"
+
+    @pytest.mark.parametrize(
+        "header_name",
+        [
+            "Host",
+            "host",
+            "hOsT",
+            ":authority",
+            ":AUTHORITY",
+            "X-Api-Key",
+            "x-api-key",
+            "X-aPi-KeY",
+            "X-Addon-Token",
+            "x-addon-token",
+            "X-aDdOn-ToKeN",
+        ],
+    )
+    async def test_protected_caller_header_rejected_before_network(self, header_name: str) -> None:
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            return httpx.Response(200, json=[])
+
+        executor = make_executor(handler)
+        with pytest.raises(ClockifyConfigurationError, match="protected header"):
+            await executor.execute(
+                GET_READ,
+                path_args={"workspaceId": "w"},
+                headers={header_name: "caller-controlled"},
+            )
+        assert calls == 0
+
+    @pytest.mark.parametrize("addon_token", [None, "configured-addon-token"])
+    async def test_exactly_one_configured_credential_reaches_transport(
+        self, addon_token: str | None
+    ) -> None:
+        seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(200, json=[])
+
+        executor = make_executor(handler, addon_token=addon_token)
+        await executor.execute(
+            GET_READ,
+            path_args={"workspaceId": "w"},
+            headers={"Authorization": "caller-scheme caller-value", "X-Trace": "trace-1"},
+        )
+        credential_headers = [
+            name for name in ("X-Api-Key", "X-Addon-Token") if name in seen[0].headers
+        ]
+        assert credential_headers == ["X-Addon-Token" if addon_token else "X-Api-Key"]
+        assert seen[0].headers["Authorization"] == "caller-scheme caller-value"
+        assert seen[0].headers["X-Trace"] == "trace-1"
 
 
 class TestQuerySerialization:
@@ -515,8 +572,105 @@ class TestErrors:
         assert info.value.status_code == 302
         assert len(seen) == 1  # no second request to another host
 
+    @pytest.mark.parametrize("addon_token", [None, "reflected-addon-token"])
+    @pytest.mark.parametrize("response_kind", ["json", "text"])
+    async def test_reflected_configured_secret_is_absent_from_public_errors(
+        self, addon_token: str | None, response_kind: str
+    ) -> None:
+        secret = addon_token or "test-key"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if response_kind == "json":
+                return httpx.Response(
+                    400,
+                    json={
+                        "message": f"safe prefix {secret} safe suffix",
+                        "nested": {"X-Api-Key": secret},
+                        "items": ["safe", {"token": secret}],
+                        "code": "SAFE_CODE",
+                    },
+                    headers={"X-Debug": f"Authorization: Bearer {secret}"},
+                )
+            return httpx.Response(400, text=f"safe prefix {secret} safe suffix")
+
+        executor = make_executor(handler, addon_token=addon_token)
+        with pytest.raises(ClockifyAPIError) as info:
+            await executor.execute(GET_READ, path_args={"workspaceId": "w"})
+        error = info.value
+        public_views = (
+            str(error),
+            repr(error),
+            repr(error.body),
+            repr(error.headers),
+            str(to_tool_error(error)),
+        )
+        assert all(secret not in view for view in public_views)
+        assert "safe prefix" in str(error)
+        if response_kind == "json":
+            assert error.api_code == "SAFE_CODE"
+
+    async def test_large_json_error_is_bounded_and_keeps_safe_diagnostics(self) -> None:
+        executor = make_executor(
+            lambda request: httpx.Response(
+                429,
+                json={"message": "x" * (1024 * 1024), "code": "RATE_LIMITED"},
+                headers={"Retry-After": "2", "X-Request-Id": "upstream-rid"},
+            )
+        )
+        with pytest.raises(ClockifyRateLimitError) as info:
+            await executor.execute(
+                GET_READ,
+                path_args={"workspaceId": "w"},
+                headers={"X-Request-Id": "caller-rid"},
+            )
+        error = info.value
+        assert len(str(error)) <= 800
+        assert len(repr(error.body)) <= 5000
+        assert error.operation_id == "testRead"
+        assert error.status_code == 429
+        assert error.request_id == "caller-rid"
+        assert error.api_code == "RATE_LIMITED"
+        assert error.retry_after == 2.0
+
 
 class TestRetryBoundary:
+    @pytest.mark.parametrize(
+        ("retry_after", "expected"),
+        [
+            ("2", 2.0),
+            ("2.5", 2.5),
+            ("-1", None),
+            ("not-a-date", None),
+            (None, None),
+            ("Wed, 12 Aug 2026 08:30:05 GMT", 5.0),
+            ("Wed, 12 Aug 2026 08:29:55 GMT", 0.0),
+        ],
+    )
+    async def test_retry_after_controls_actual_retry_delay(
+        self, retry_after: str | None, expected: float | None
+    ) -> None:
+        calls = 0
+        delays: list[float | None] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                headers = {"Date": "Wed, 12 Aug 2026 08:30:00 GMT"}
+                if retry_after is not None:
+                    headers["Retry-After"] = retry_after
+                return httpx.Response(503, headers=headers)
+            return httpx.Response(200, json=[])
+
+        executor = make_executor(handler, retry_policy=ReadRetryPolicy(max_attempts=2))
+
+        async def capture_sleep(attempt: int, retry_delay: float | None) -> None:
+            delays.append(retry_delay)
+
+        executor._sleep = capture_sleep  # type: ignore[method-assign]
+        await executor.execute(GET_READ, path_args={"workspaceId": "w"})
+        assert delays == [expected]
+
     async def test_read_retries_on_retryable_status(self) -> None:
         calls = {"n": 0}
 

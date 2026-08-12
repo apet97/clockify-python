@@ -8,7 +8,12 @@ from typing import Any
 import httpx
 
 from clockify._transport.auth import Credential
-from clockify._transport.decode import decode_success, raise_api_error, request_id_of
+from clockify._transport.decode import (
+    decode_success,
+    parse_retry_after,
+    raise_api_error,
+    request_id_of,
+)
 from clockify._transport.encode import CompiledRequest, compile_request
 from clockify._transport.hosts import validate_destination
 from clockify.config import (
@@ -19,12 +24,23 @@ from clockify.config import (
     ReadRetryPolicy,
 )
 from clockify.errors import (
+    ClockifyConfigurationError,
     ClockifyTransportError,
     MutationOutcomeUnknownError,
 )
 from clockify.files import Upload
 from clockify.operations.model import Operation, Service
 from clockify.response import ClockifyResponse
+
+_PROTECTED_CALLER_HEADERS = frozenset({"host", ":authority", "x-api-key", "x-addon-token"})
+
+
+def _reject_protected_headers(headers: dict[str, str]) -> None:
+    protected = sorted(name for name in headers if name.lower() in _PROTECTED_CALLER_HEADERS)
+    if protected:
+        raise ClockifyConfigurationError(
+            "caller supplied protected header(s): " + ", ".join(protected)
+        )
 
 
 class HttpExecutor:
@@ -62,12 +78,14 @@ class HttpExecutor:
         headers: dict[str, str] | None = None,
     ) -> CompiledRequest:
         """Pure compilation without auth. Reused by the MCP write-plan binding."""
+        caller_headers = headers or {}
+        _reject_protected_headers(caller_headers)
         default_headers = {
             "User-Agent": USER_AGENT,
             "X-Request-Id": str(uuid.uuid4()),
         }
         # Caller headers win over defaults.
-        merged = {**default_headers, **(headers or {})}
+        merged = {**default_headers, **caller_headers}
         return compile_request(
             operation,
             base_url=self._service_urls[operation.service],
@@ -101,6 +119,7 @@ class HttpExecutor:
         *,
         timeout: httpx.Timeout | None = None,
     ) -> ClockifyResponse[Any]:
+        _reject_protected_headers(dict(compiled.headers))
         # Final-destination validation happens before the credential is attached.
         validate_destination(
             compiled.url,
@@ -134,7 +153,7 @@ class HttpExecutor:
                 and attempt < attempts - 1
             )
             if can_retry_status:
-                retry_after = _retry_after_seconds(response)
+                retry_after = parse_retry_after(response)
                 await response.aclose()
                 await self._sleep(attempt, retry_after)
                 continue
@@ -147,7 +166,11 @@ class HttpExecutor:
                     request_id=request_id_of(response),
                     operation_id=operation.operation_id,
                 )
-            raise_api_error(operation, response)
+            raise_api_error(
+                operation,
+                response,
+                sensitive_values=self._credential.sensitive_values(),
+            )
         raise last_error or ClockifyTransportError(
             f"{operation.operation_id}: retry loop exhausted", operation_id=operation.operation_id
         )
@@ -238,14 +261,3 @@ class ReadOnlyExecutor:
                 f"{operation.operation_id} mutates Clockify state and was blocked "
                 "by the read-only execution boundary"
             )
-
-
-def _retry_after_seconds(response: httpx.Response) -> float | None:
-    raw = response.headers.get("Retry-After")
-    if raw is None:
-        return None
-    try:
-        value = float(raw)
-    except ValueError:
-        return None
-    return value if value >= 0 else None

@@ -60,6 +60,7 @@ class ClockifyAPIError(ClockifyError):
         operation_id: str,
         status_code: int,
         body: Any = None,
+        detail: str | None = None,
         api_code: int | str | None = None,
         request_id: str | None = None,
         retry_after: float | None = None,
@@ -69,6 +70,7 @@ class ClockifyAPIError(ClockifyError):
         self.operation_id = operation_id
         self.status_code = status_code
         self.body = body
+        self.detail = detail
         self.api_code = api_code
         self.request_id = request_id
         self.retry_after = retry_after

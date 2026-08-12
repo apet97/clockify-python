@@ -21,5 +21,9 @@ class Credential:
     def attach(self, headers: dict[str, str]) -> None:
         headers[self.header_name] = self._secret
 
+    def sensitive_values(self) -> tuple[str, ...]:
+        """Return values that the internal error boundary must redact."""
+        return (self._secret,)
+
     def __repr__(self) -> str:
         return f"Credential(header_name={self.header_name!r}, secret=<redacted>)"

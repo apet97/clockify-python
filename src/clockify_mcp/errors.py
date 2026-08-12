@@ -22,7 +22,12 @@ def to_tool_error(exc: ClockifyError) -> ToolError:
         hint = f"; retry after {exc.retry_after}s" if exc.retry_after else ""
         return ToolError(f"Clockify rate limit hit{hint}")
     if isinstance(exc, ClockifyAPIError):
-        return ToolError(f"Clockify API error {exc.status_code} on {exc.operation_id}: {exc}")
+        detail = f": {exc.detail}" if exc.detail else ""
+        code = f"; code {exc.api_code}" if exc.api_code is not None else ""
+        request = f"; request {exc.request_id}" if exc.request_id else ""
+        return ToolError(
+            f"Clockify API error {exc.status_code} on {exc.operation_id}{code}{request}{detail}"
+        )
     if isinstance(exc, ClockifyConfigurationError):
         return ToolError(f"configuration problem: {exc}")
     if isinstance(exc, ClockifyTransportError):
