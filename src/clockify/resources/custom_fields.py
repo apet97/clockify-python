@@ -58,7 +58,7 @@ class CustomFieldsResource(ResourceBase):
         *,
         workspace_id: str | None = None,
         status: str | None = None,
-        entity_type: str | None = None,
+        entity_type: list[str] | None = None,
         page: int | None = None,
         page_size: int | None = None,
     ) -> list[CustomField]:
@@ -80,7 +80,7 @@ class CustomFieldsResource(ResourceBase):
         workspace_id: str | None = None,
         name: str | None = None,
         status: str | None = None,
-        entity_type: str | None = None,
+        entity_type: list[str] | None = None,
         page: int | None = None,
         page_size: int | None = None,
     ) -> list[CustomField]:

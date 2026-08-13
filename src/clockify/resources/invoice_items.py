@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from typing import Any
 
+from clockify.errors import ClockifyConfigurationError
 from clockify.models import AddInvoiceItemRequest, ImportInvoiceItemsRequest, InvoiceDtoFull
 from clockify.operations.invoice_items import (
     INVOICE_ITEMS_CREATE,
@@ -30,9 +31,11 @@ class InvoiceItemsResource(ResourceBase):
         return self._adapt(INVOICE_ITEMS_CREATE, response, InvoiceDtoFull)
 
     async def delete(
-        self, invoice_id: str, order: "int | str", *, workspace_id: str | None = None
+        self, invoice_id: str, order: int, *, workspace_id: str | None = None
     ) -> InvoiceDtoFull:
         """`order` is the 1-based item order (not an id); returns the full updated invoice."""
+        if order < 1:
+            raise ClockifyConfigurationError("order must be at least 1")
         response = await self._call(
             INVOICE_ITEMS_DELETE,
             path={

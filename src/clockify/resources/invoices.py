@@ -65,7 +65,7 @@ class InvoicesResource(ResourceBase):
         invoice_id: str,
         *,
         workspace_id: str | None = None,
-        user_locale: str | None = None,
+        user_locale: str = "en-US",
     ) -> BinaryResponse:
         """Binary invoice export; live Clockify requires userLocale (default en-US)."""
         response = await self._call(

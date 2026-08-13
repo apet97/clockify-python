@@ -87,9 +87,9 @@ HOLIDAYS_LIST_IN_PERIOD = Operation(
     path="/workspaces/{workspaceId}/holidays/in-period",
     path_parameters=("workspaceId",),
     query_parameters=(
-        QueryParameter("assigned_to", "assigned-to"),  # required; user ID only, not group ID
-        QueryParameter("start", "start"),
-        QueryParameter("end", "end"),
+        QueryParameter("assigned_to", "assigned-to", required=True),
+        QueryParameter("start", "start", required=True),
+        QueryParameter("end", "end", required=True),
     ),
     request_encoding=RequestEncoding.NONE,
     response_kind=ResponseKind.JSON,

@@ -3,7 +3,7 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from pydantic import TypeAdapter
+from pydantic import Field, TypeAdapter
 
 from clockify.models import (
     BulkEditTimeEntryRequest,
@@ -16,6 +16,7 @@ from clockify.models import (
     TimeEntryUpdate,
     TimeEntryWithRatesDtoV1,
 )
+from clockify.models.base import ClockifyRequestModel
 from clockify.operations.time_entries import (
     TIME_ENTRIES_BULK_UPDATE_FOR_USER,
     TIME_ENTRIES_CREATE,
@@ -37,6 +38,15 @@ _TIME_ENTRIES_LIST = TypeAdapter(list[TimeEntriesTimeEntry])
 _TIME_ENTRY_LIST = TypeAdapter(list[TimeEntry])
 _TIME_ENTRY_DTO_V1_LIST = TypeAdapter(list[TimeEntryDtoImplV1])
 _TIME_ENTRY_WITH_RATES_LIST = TypeAdapter(list[TimeEntryWithRatesDtoV1])
+
+
+class _MarkTimeEntriesInvoicedRequest(ClockifyRequestModel):
+    invoiced: bool
+    time_entry_ids: list[str] = Field(alias="timeEntryIds")
+
+
+class _StopTimerRequest(ClockifyRequestModel):
+    end: str
 
 
 class TimeEntriesResource(ResourceBase):
@@ -111,7 +121,7 @@ class TimeEntriesResource(ResourceBase):
         user_id: str,
         *,
         workspace_id: str | None = None,
-        time_entry_ids: list[str] | None = None,
+        time_entry_ids: list[str],
     ) -> list[TimeEntryDtoImplV1]:
         """Multi-entity delete; `time-entry-ids` is a required repeated query key."""
         response = await self._call(
@@ -226,24 +236,33 @@ class TimeEntriesResource(ResourceBase):
         return self._adapt(TIME_ENTRIES_LIST_IN_PROGRESS, response, _TIME_ENTRIES_LIST)
 
     async def mark_invoiced(
-        self, body: Mapping[str, Any], *, workspace_id: str | None = None
+        self,
+        body: Mapping[str, Any],
+        *,
+        workspace_id: str | None = None,
     ) -> None:
         """Multi-entity financial transition: {invoiced: bool, timeEntryIds: [str]}."""
+        validated = self._coerce(body, _MarkTimeEntriesInvoicedRequest)
         await self._call(
             TIME_ENTRIES_MARK_INVOICED,
             path={"workspaceId": self._workspace(workspace_id)},
-            body=dict(body),
+            body=validated,
         )
         return None
 
     async def stop_timer_for_user(
-        self, user_id: str, body: Mapping[str, Any], *, workspace_id: str | None = None
+        self,
+        user_id: str,
+        body: Mapping[str, Any],
+        *,
+        workspace_id: str | None = None,
     ) -> TimeEntriesTimeEntry:
         """Body is {end: date-time}; this PATCH is the only stop-timer route."""
+        validated = self._coerce(body, _StopTimerRequest)
         response = await self._call(
             TIME_ENTRIES_STOP_TIMER_FOR_USER,
             path={"workspaceId": self._workspace(workspace_id), "userId": user_id},
-            body=dict(body),
+            body=validated,
         )
         return self._adapt(TIME_ENTRIES_STOP_TIMER_FOR_USER, response, TimeEntriesTimeEntry)
 

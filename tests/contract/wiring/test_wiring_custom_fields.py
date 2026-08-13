@@ -51,7 +51,7 @@ async def test_list_for_project_query_wire_names() -> None:
         "p1",
         workspace_id="w1",
         status="VISIBLE",
-        entity_type="TIMEENTRY",
+        entity_type=["TIMEENTRY", "USER"],
         page=1,
         page_size=50,
     )
@@ -62,7 +62,7 @@ async def test_list_for_project_query_wire_names() -> None:
         url="https://api.clockify.me/api/v1/workspaces/w1/projects/p1/custom-fields",
         query={
             "status": ["VISIBLE"],
-            "entity-type": ["TIMEENTRY"],
+            "entity-type": ["TIMEENTRY", "USER"],
             "page": ["1"],
             "page-size": ["50"],
         },
@@ -73,7 +73,7 @@ async def test_list_for_project_query_wire_names() -> None:
 async def test_list_for_workspace_query_wire_names_and_default_workspace() -> None:
     client, capture = make_client(json=[FIELD_JSON])
     await client.custom_fields.list_for_workspace(
-        name="Sev", status="VISIBLE", entity_type="USER", page=2, page_size=100
+        name="Sev", status="VISIBLE", entity_type=["USER"], page=2, page_size=100
     )
     assert_wired(
         capture,

@@ -132,7 +132,7 @@ class SharedReportFilter(ClockifyResponseModel):
 
 
 class SharedReportGroupRow(ClockifyResponseModel):
-    _id: str | None = None
+    id_: str | None = Field(default=None, alias="_id")
     amount: float | None = None
     amounts: list[dict[str, Any]] | None = None
     client_name: str | None = Field(default=None, alias="clientName")
@@ -150,7 +150,7 @@ class SharedReportListEnvelope(ClockifyResponseModel):
 
 
 class SharedReportTotals(ClockifyResponseModel):
-    _id: str | None = None
+    id_: str | None = Field(default=None, alias="_id")
     amounts: list[dict[str, Any]] | None = None
     entries_count: int | None = Field(default=None, alias="entriesCount")
     num_of_currencies: int | None = Field(default=None, alias="numOfCurrencies")

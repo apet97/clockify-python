@@ -11,6 +11,13 @@ implicit:
   Always check the operation's manifest note before converting.
 """
 
+from decimal import ROUND_HALF_EVEN, Decimal
+
+
+def _scale_major(major_units: float, scale: int) -> int:
+    value = Decimal(str(major_units))
+    return int((value * scale).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
+
 
 def minor_to_major(minor_units: int) -> float:
     """Cents -> major currency units (e.g. 12345 -> 123.45)."""
@@ -19,7 +26,7 @@ def minor_to_major(minor_units: int) -> float:
 
 def major_to_minor(major_units: float) -> int:
     """Major currency units -> cents, rounded to the nearest cent."""
-    return round(major_units * 100)
+    return _scale_major(major_units, 100)
 
 
 def minor_times_100_to_major(value: int) -> float:
@@ -29,4 +36,4 @@ def minor_times_100_to_major(value: int) -> float:
 
 def major_to_minor_times_100(major_units: float) -> int:
     """Major units -> the minor-times-100 wire scale used by invoice fields."""
-    return round(major_units * 10_000)
+    return _scale_major(major_units, 10_000)

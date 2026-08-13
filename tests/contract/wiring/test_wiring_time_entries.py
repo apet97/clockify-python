@@ -1,5 +1,9 @@
 """Public-method wiring: time_entries (13 operations)."""
 
+import pydantic
+import pytest
+
+from clockify.errors import ClockifyConfigurationError
 from clockify.models import (
     GetTimeEntriesByIdsRequest,
     TimeEntriesTimeEntry,
@@ -129,6 +133,17 @@ async def test_delete_all_for_user() -> None:
     assert isinstance(entries[0], TimeEntryDtoImplV1)
 
 
+async def test_delete_all_rejects_empty_ids_before_transport() -> None:
+    client, capture = make_client(json=[])
+
+    with pytest.raises(
+        ClockifyConfigurationError, match="required query parameter 'time_entry_ids'"
+    ):
+        await client.time_entries.delete_all_for_user("u1", workspace_id="w1", time_entry_ids=[])
+
+    assert capture.requests == []
+
+
 async def test_duplicate() -> None:
     client, capture = make_client(status=201, json=ENTRY_JSON)
     entry = await client.time_entries.duplicate("u1", "te1", workspace_id="w1")
@@ -243,6 +258,27 @@ async def test_mark_invoiced() -> None:
     assert result is None
 
 
+async def test_mark_invoiced_requires_ids_before_transport() -> None:
+    client, capture = make_client(status=204, content=b"")
+
+    with pytest.raises(pydantic.ValidationError):
+        await client.time_entries.mark_invoiced({"invoiced": True}, workspace_id="w1")
+
+    assert capture.requests == []
+
+
+async def test_mark_invoiced_rejects_unknown_field_before_transport() -> None:
+    client, capture = make_client(status=204, content=b"")
+
+    with pytest.raises(pydantic.ValidationError):
+        await client.time_entries.mark_invoiced(
+            {"invoiced": True, "timeEntryIds": ["te1"], "invoice": False},
+            workspace_id="w1",
+        )
+
+    assert capture.requests == []
+
+
 async def test_stop_timer_for_user() -> None:
     client, capture = make_client(json=ENTRY_JSON)
     entry = await client.time_entries.stop_timer_for_user(
@@ -256,6 +292,28 @@ async def test_stop_timer_for_user() -> None:
     )
     assert capture.sent_json() == {"end": "2026-01-01T01:00:00Z"}
     assert isinstance(entry, TimeEntriesTimeEntry)
+
+
+async def test_stop_timer_requires_end_before_transport() -> None:
+    client, capture = make_client(json=ENTRY_JSON)
+
+    with pytest.raises(pydantic.ValidationError):
+        await client.time_entries.stop_timer_for_user("u1", {}, workspace_id="w1")
+
+    assert capture.requests == []
+
+
+async def test_stop_timer_rejects_unknown_field_before_transport() -> None:
+    client, capture = make_client(json=ENTRY_JSON)
+
+    with pytest.raises(pydantic.ValidationError):
+        await client.time_entries.stop_timer_for_user(
+            "u1",
+            {"end": "2026-01-01T01:00:00Z", "ends": "2026-01-01T02:00:00Z"},
+            workspace_id="w1",
+        )
+
+    assert capture.requests == []
 
 
 async def test_update() -> None:

@@ -95,6 +95,18 @@ async def test_export_returns_binary() -> None:
     assert result.content == b"%PDF-1.7"
 
 
+async def test_export_sends_documented_locale_default() -> None:
+    client, capture = make_client(content=b"%PDF-1.7", content_type="application/pdf")
+    await client.invoices.export("i1", workspace_id="w1")
+    assert_wired(
+        capture,
+        resource="invoices",
+        method="export",
+        url="https://api.clockify.me/api/v1/workspaces/w1/invoices/i1/export",
+        query={"userLocale": ["en-US"]},
+    )
+
+
 async def test_filter_is_post_read_returning_envelope() -> None:
     client, capture = make_client(
         json={"invoices": [{"id": "i1", "number": "INV-001"}], "total": 1}

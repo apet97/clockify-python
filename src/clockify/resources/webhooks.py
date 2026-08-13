@@ -1,7 +1,7 @@
 """Webhooks resource: explicit methods over the webhook operations."""
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import TypeAdapter
 
@@ -82,7 +82,7 @@ class WebhooksResource(ResourceBase):
         workspace_id: str | None = None,
         page: int | None = None,
         size: int | None = None,
-        statuses: "ListOfStr | None" = None,
+        statuses: Literal["SUCCEEDED", "RETRYING", "FAILED"] | None = None,
     ) -> "ListOfWebhookEventStatusWithLatestLogDtoV1":
         response = await self._call(
             WEBHOOKS_LIST_EVENT_STATUSES,

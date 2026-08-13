@@ -1,5 +1,6 @@
 """Pagination stop-rule tests."""
 
+import httpx
 import pytest
 
 from clockify.pagination import (
@@ -9,6 +10,7 @@ from clockify.pagination import (
     iter_all,
     iter_pages,
 )
+from clockify.response import ClockifyResponse
 
 
 def page(items: list[str], number: int, *, size: int = 2, last: bool | None = None) -> Page[str]:
@@ -72,3 +74,36 @@ async def test_iter_pages_yields_page_objects() -> None:
     seen = [p async for p in iter_pages(fetcher(pages))]
     assert len(seen) == 1
     assert seen[0].items == ["a"]
+
+
+def test_page_from_response_preserves_transport_metadata() -> None:
+    response = ClockifyResponse(
+        data=["a"],
+        status_code=200,
+        headers=httpx.Headers({"Last-Page": "false", "X-Request-Id": "req-1"}),
+        request_id="req-1",
+        operation_id="listItems",
+    )
+
+    result = Page.from_response(response, items=["a"], page=1, page_size=2)
+
+    assert result.items == ["a"]
+    assert result.last_page is False
+    assert result.request_id == "req-1"
+    assert result.headers is response.headers
+
+
+def test_page_from_response_accepts_adapted_items() -> None:
+    response = ClockifyResponse(
+        data=[{"id": "a"}],
+        status_code=200,
+        headers=httpx.Headers(),
+        request_id=None,
+        operation_id="listItems",
+    )
+
+    result = Page.from_response(response, items=["a"], page=1, page_size=2, count=1)
+
+    assert result.items == ["a"]
+    assert result.last_page is None
+    assert result.count == 1

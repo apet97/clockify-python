@@ -2,7 +2,7 @@
 
 import builtins
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import TypeAdapter
 
@@ -64,7 +64,7 @@ class UsersResource(ResourceBase):
         body: "AddUserToWorkspaceRequest | Mapping[str, Any]",
         *,
         workspace_id: str | None = None,
-        send_email: str | None = None,
+        send_email: Literal["true", "false"] = "true",
     ) -> Workspace:
         """`send-email` is a required string-enum query parameter ("true"/"false")."""
         validated = self._coerce(body, AddUserToWorkspaceRequest)
@@ -113,14 +113,14 @@ class UsersResource(ResourceBase):
         email: str | None = None,
         project_id: str | None = None,
         status: str | None = None,
-        account_statuses: "ListOfStr | None" = None,
+        account_statuses: str | None = None,
         name: str | None = None,
         sort_column: str | None = None,
         sort_order: str | None = None,
         page: int | None = None,
         page_size: int | None = None,
         memberships: str | None = None,
-        include_roles: bool | None = None,
+        include_roles: bool = False,
     ) -> "ListOfUserDtoV1":
         response = await self._call(
             USERS_LIST,

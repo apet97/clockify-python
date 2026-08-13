@@ -111,8 +111,8 @@ SCHEDULING_GET_PROJECT_TOTALS = Operation(
     path="/workspaces/{workspaceId}/scheduling/assignments/projects/totals/{projectId}",
     path_parameters=("workspaceId", "projectId"),
     query_parameters=(
-        QueryParameter("start", "start"),
-        QueryParameter("end", "end"),
+        QueryParameter("start", "start", required=True),
+        QueryParameter("end", "end", required=True),
     ),
     request_encoding=RequestEncoding.NONE,
     response_kind=ResponseKind.JSON,
@@ -134,8 +134,8 @@ SCHEDULING_GET_USER_CAPACITY = Operation(
     query_parameters=(
         QueryParameter("page", "page"),
         QueryParameter("page_size", "page-size"),
-        QueryParameter("start", "start"),
-        QueryParameter("end", "end"),
+        QueryParameter("start", "start", required=True),
+        QueryParameter("end", "end", required=True),
     ),
     request_encoding=RequestEncoding.NONE,
     response_kind=ResponseKind.JSON,
@@ -161,8 +161,8 @@ SCHEDULING_LIST_ASSIGNMENTS = Operation(
     path_parameters=("workspaceId",),
     query_parameters=(
         QueryParameter("name", "name"),
-        QueryParameter("start", "start"),
-        QueryParameter("end", "end"),
+        QueryParameter("start", "start", required=True),
+        QueryParameter("end", "end", required=True),
         QueryParameter("sort_column", "sort-column"),
         QueryParameter("sort_order", "sort-order"),
         QueryParameter("page", "page"),

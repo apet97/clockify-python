@@ -1,46 +1,90 @@
-"""Registry contract: exact counts and byte-exact agreement with the corrected OpenAPI.
+"""Registry contract: exact counts and agreement with the pinned corrected OpenAPI.
 
-The corrected spec is read from the sibling evidence repository. Count/uniqueness
-tests never need it. The spec cross-check REQUIRES the evidence: a missing sibling
-repository fails the test by default so completeness evidence cannot silently
-disappear. Only an explicit CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE=1 permits an
-intentional evidence-less run (one clearly explained skip). Release CI clones
-apet97/clockify-ts-sdk at the pinned commit and never sets the opt-out.
+The corrected spec is read from the pinned Git object in the sibling evidence
+repository. Count/uniqueness tests never need it. The spec cross-check REQUIRES
+the evidence: a missing sibling repository fails the test by default so
+completeness evidence cannot silently disappear. Only an explicit
+CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE=1 permits an intentional evidence-less run
+(one clearly explained skip). Release CI clones apet97/clockify-ts-sdk at the
+pinned commit and never sets the opt-out.
 """
 
+import importlib
+import inspect
 import keyword
 import os
+import subprocess
+import types
 from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, Union, get_args, get_origin, get_type_hints
 
 import pytest
 
 from clockify.operations.model import RequestEncoding, ResponseKind, Service
 from clockify.operations.registry import ALL_OPERATIONS, BY_ID, BY_PUBLIC_METHOD
+from clockify.resources._base import ResourceBase
 
-SPEC_PATH = (
-    Path(__file__).resolve().parents[2].parent
-    / "clockify-ts-sdk"
-    / "spec"
-    / "corrected"
-    / "clockify.corrected.openapi.yaml"
-)
+EVIDENCE_REPO = Path(__file__).resolve().parents[2].parent / "clockify-ts-sdk"
+EVIDENCE_SPEC_PATH = "spec/corrected/clockify.corrected.openapi.yaml"
 EVIDENCE_PIN = "d7091a44a1b95d4918fa17a7f9b174bf668a9136"
 EVIDENCE_OPT_OUT = "CLOCKIFY_ALLOW_MISSING_TS_SDK_EVIDENCE"
 
 
-def evidence_gate(spec_exists: bool, environ: dict[str, str]) -> str:
+def evidence_gate(evidence_exists: bool, environ: dict[str, str]) -> str:
     """Decide how the spec cross-check runs: 'run', 'skip', or 'fail'.
 
     Missing evidence fails by default; only the explicit opt-out variable set to
     exactly "1" converts it into one clearly explained skip.
     """
-    if spec_exists:
+    if evidence_exists:
         return "run"
     if environ.get(EVIDENCE_OPT_OUT) == "1":
         return "skip"
     return "fail"
+
+
+def _load_corrected_spec() -> dict[str, Any]:
+    verdict = evidence_gate(EVIDENCE_REPO.is_dir(), dict(os.environ))
+    if verdict == "skip":
+        pytest.skip(
+            "corrected OpenAPI evidence intentionally absent: "
+            f"{EVIDENCE_OPT_OUT}=1 was set explicitly, so the spec cross-check "
+            "is skipped for this run only. Never set this in development or "
+            "release CI."
+        )
+    if verdict == "fail":
+        pytest.fail(
+            f"corrected OpenAPI evidence repository missing at {EVIDENCE_REPO}. Clone "
+            f"https://github.com/apet97/clockify-ts-sdk at commit {EVIDENCE_PIN} "
+            "as a sibling directory of this repository, or — only for an "
+            f"intentional evidence-less run — set {EVIDENCE_OPT_OUT}=1.",
+            pytrace=False,
+        )
+
+    object_name = f"{EVIDENCE_PIN}:{EVIDENCE_SPEC_PATH}"
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(EVIDENCE_REPO), "show", object_name],
+            check=True,
+            capture_output=True,
+        )
+    except FileNotFoundError:
+        pytest.fail(
+            f"cannot read pinned corrected OpenAPI object {object_name}: "
+            "the git executable was not found.",
+            pytrace=False,
+        )
+    except subprocess.CalledProcessError:
+        pytest.fail(
+            f"cannot read pinned corrected OpenAPI object {object_name} from "
+            f"{EVIDENCE_REPO}. Confirm that the sibling repository contains "
+            f"commit {EVIDENCE_PIN}.",
+            pytrace=False,
+        )
+
+    yaml = pytest.importorskip("yaml")
+    return yaml.safe_load(result.stdout)
 
 
 def test_evidence_gate_states() -> None:
@@ -111,23 +155,7 @@ def test_mutating_operations_never_paginate() -> None:
 
 
 def test_registry_agrees_with_corrected_openapi() -> None:
-    verdict = evidence_gate(SPEC_PATH.exists(), dict(os.environ))
-    if verdict == "skip":
-        pytest.skip(
-            "corrected OpenAPI evidence intentionally absent: "
-            f"{EVIDENCE_OPT_OUT}=1 was set explicitly, so the spec cross-check "
-            "is skipped for this run only. Never set this in development or "
-            "release CI."
-        )
-    if verdict == "fail":
-        pytest.fail(
-            f"corrected OpenAPI evidence missing at {SPEC_PATH}. Clone "
-            f"https://github.com/apet97/clockify-ts-sdk at commit {EVIDENCE_PIN} "
-            "as a sibling directory of this repository, or — only for an "
-            f"intentional evidence-less run — set {EVIDENCE_OPT_OUT}=1."
-        )
-    yaml = pytest.importorskip("yaml")
-    spec = yaml.safe_load(SPEC_PATH.read_bytes())
+    spec = _load_corrected_spec()
 
     service_by_url = {
         "https://api.clockify.me/api/v1": Service.REGULAR,
@@ -141,6 +169,7 @@ def test_registry_agrees_with_corrected_openapi() -> None:
                 continue
             node = item[verb]
             servers = node.get("servers") or spec.get("servers")
+            assert servers is not None, node["operationId"]
             service = service_by_url[servers[0]["url"]]
             spec_ops[node["operationId"]] = (verb.upper(), path, service, node)
 
@@ -172,3 +201,101 @@ def test_registry_agrees_with_corrected_openapi() -> None:
         # omitting their request bodies; only they may disagree with the spec here.
         elif not has_body:
             assert op.operation_id in ("createExpense", "updateExpense"), op.operation_id
+
+
+def _resolve_component(spec: dict[str, Any], node: dict[str, Any]) -> dict[str, Any]:
+    while "$ref" in node:
+        resolved: Any = spec
+        for part in node["$ref"][2:].split("/"):
+            resolved = resolved[part]
+        node = resolved
+    return node
+
+
+def _annotation_shape(annotation: Any) -> str:
+    origin = get_origin(annotation)
+    if origin in (Union, types.UnionType):
+        shapes = {
+            _annotation_shape(item) for item in get_args(annotation) if item is not type(None)
+        }
+        assert len(shapes) == 1, annotation
+        return shapes.pop()
+    if origin is list:
+        return "array"
+    if origin is Literal:
+        literal_types = {type(value) for value in get_args(annotation)}
+        assert len(literal_types) == 1, annotation
+        return _annotation_shape(literal_types.pop())
+    if annotation is str:
+        return "string"
+    if annotation is bool:
+        return "boolean"
+    if annotation is int:
+        return "integer"
+    if annotation is float:
+        return "number"
+    raise AssertionError(f"unsupported public query annotation {annotation!r}")
+
+
+def _resource_method(resource: str, method: str) -> Any:
+    module = importlib.import_module(f"clockify.resources.{resource}")
+    candidates = [
+        value
+        for value in vars(module).values()
+        if inspect.isclass(value)
+        and value is not ResourceBase
+        and issubclass(value, ResourceBase)
+        and value.__module__ == module.__name__
+        and hasattr(value, method)
+    ]
+    assert len(candidates) == 1, (resource, method, candidates)
+    return getattr(candidates[0], method)
+
+
+def test_query_contract_matches_corrected_openapi_and_public_signatures() -> None:
+    spec = _load_corrected_spec()
+    spec_operations: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
+    for item in spec["paths"].values():
+        for verb in ("get", "post", "put", "patch", "delete"):
+            if verb in item:
+                node = item[verb]
+                spec_operations[node["operationId"]] = (item, node)
+
+    for operation in ALL_OPERATIONS:
+        item, node = spec_operations[operation.operation_id]
+        query_parameters: dict[str, dict[str, Any]] = {}
+        for raw_parameter in [*item.get("parameters", []), *node.get("parameters", [])]:
+            parameter = _resolve_component(spec, raw_parameter)
+            if parameter.get("in") == "query":
+                query_parameters[parameter["name"]] = parameter
+
+        registry_parameters = {
+            parameter.wire_name: parameter for parameter in operation.query_parameters
+        }
+        assert set(registry_parameters) == set(query_parameters), operation.operation_id
+
+        method = _resource_method(operation.resource, operation.sdk_method)
+        signature = inspect.signature(method)
+        annotations = get_type_hints(method)
+        for wire_name, query_parameter in query_parameters.items():
+            registry_parameter = registry_parameters[wire_name]
+            public_parameter = signature.parameters[registry_parameter.python_name]
+            schema = _resolve_component(spec, query_parameter["schema"])
+
+            assert registry_parameter.required is bool(query_parameter.get("required")), (
+                operation.operation_id,
+                wire_name,
+            )
+            assert (
+                _annotation_shape(annotations[registry_parameter.python_name]) == schema["type"]
+            ), (
+                operation.operation_id,
+                wire_name,
+            )
+
+            if registry_parameter.required:
+                expected_default = schema.get("default", inspect.Parameter.empty)
+                assert public_parameter.default == expected_default, (
+                    operation.operation_id,
+                    wire_name,
+                )

@@ -38,6 +38,13 @@ class TestSnake:
     def test_python_keyword_gets_suffix(self) -> None:
         assert snake("from") == "from_"
 
+    def test_leading_underscore_gets_public_suffix(self) -> None:
+        assert snake("_id") == "id_"
+
+    def test_only_underscores_fail_closed(self) -> None:
+        with pytest.raises(UnsupportedSchema, match="cannot derive public identifier"):
+            snake("__")
+
 
 class TestRenderType:
     def test_primitives(self) -> None:
@@ -200,3 +207,15 @@ class TestRenderRoot:
         source, _ = imp.render_root("Fields", request_only=False)
         assert "rtl: bool | None = None" in source
         assert 'rtl_upper: bool | None = Field(default=None, alias="RTL")' in source
+
+    def test_leading_underscore_field_keeps_wire_alias(self) -> None:
+        imp = make_importer(
+            {
+                "Row": {
+                    "type": "object",
+                    "properties": {"_id": {"type": "string"}},
+                }
+            }
+        )
+        source, _ = imp.render_root("Row", request_only=False)
+        assert 'id_: str | None = Field(default=None, alias="_id")' in source

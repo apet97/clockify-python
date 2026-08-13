@@ -1,5 +1,8 @@
 """Public-method wiring: time_off_policies (6 operations)."""
 
+import pytest
+
+from clockify.errors import ClockifyConfigurationError
 from clockify.models import Policy
 
 from ._harness import assert_wired, make_client
@@ -74,7 +77,7 @@ async def test_list_query_wire_names() -> None:
     client, capture = make_client(json=[POLICY_JSON])
     policies = await client.time_off_policies.list(
         workspace_id="w1",
-        page=2,
+        page="2",
         page_size=10,
         name="Vac",
         status="ACTIVE",
@@ -129,3 +132,18 @@ async def test_update_status() -> None:
     )
     assert capture.sent_json() == {"status": "ARCHIVED"}
     assert isinstance(policy, Policy)
+
+
+async def test_create_rejects_nested_unknown_fields_before_transport() -> None:
+    client, capture = make_client(status=201, json=POLICY_JSON)
+
+    with pytest.raises(ClockifyConfigurationError, match=r"approve\.approvalTypo"):
+        await client.time_off_policies.create(
+            {
+                "name": "Vacation",
+                "approve": {"requiresApproval": True, "approvalTypo": "sent"},
+            },
+            workspace_id="w1",
+        )
+
+    assert capture.requests == []

@@ -5,11 +5,12 @@ Resource list methods stay plain page fetchers; these free functions loop them.
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import httpx
 
 from clockify.errors import ClockifyError
+from clockify.response import ClockifyResponse
 
 T = TypeVar("T")
 
@@ -36,6 +37,27 @@ class Page(Generic[T]):
     count: int | None = None
     request_id: str | None = None
     headers: httpx.Headers | None = None
+
+    @classmethod
+    def from_response(
+        cls,
+        response: ClockifyResponse[Any],
+        *,
+        items: list[T],
+        page: int,
+        page_size: int,
+        count: int | None = None,
+    ) -> "Page[T]":
+        """Build a typed page and keep the response pagination metadata."""
+        return cls(
+            items=items,
+            page=page,
+            page_size=page_size,
+            last_page=response.last_page,
+            count=count,
+            request_id=response.request_id,
+            headers=response.headers,
+        )
 
 
 PageFetcher = Callable[[int], Awaitable[Page[T]]]

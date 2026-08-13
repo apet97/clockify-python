@@ -32,7 +32,7 @@ ENTITY_CHANGES_LIST_CREATED = Operation(
     path="/workspaces/{workspaceId}/entities/created",
     path_parameters=("workspaceId",),
     query_parameters=(
-        QueryParameter("type", "type"),
+        QueryParameter("type", "type", required=True),
         QueryParameter("start", "start"),
         QueryParameter("end", "end"),
         QueryParameter("page", "page"),
@@ -57,7 +57,7 @@ ENTITY_CHANGES_LIST_DELETED = Operation(
     path="/workspaces/{workspaceId}/entities/deleted",
     path_parameters=("workspaceId",),
     query_parameters=(
-        QueryParameter("type", "type"),
+        QueryParameter("type", "type", required=True),
         QueryParameter("start", "start"),
         QueryParameter("end", "end"),
         QueryParameter("page", "page"),
@@ -82,7 +82,7 @@ ENTITY_CHANGES_LIST_UPDATED = Operation(
     path="/workspaces/{workspaceId}/entities/updated",
     path_parameters=("workspaceId",),
     query_parameters=(
-        QueryParameter("type", "type"),
+        QueryParameter("type", "type", required=True),
         QueryParameter("start", "start"),
         QueryParameter("end", "end"),
         QueryParameter("page", "page"),

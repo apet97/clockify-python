@@ -41,9 +41,7 @@ USERS_ADD_TO_WORKSPACE = Operation(
     service=Service.REGULAR,
     path="/workspaces/{workspaceId}/users",
     path_parameters=("workspaceId",),
-    query_parameters=(
-        QueryParameter("send_email", "send-email"),  # string enum "true"/"false", required
-    ),
+    query_parameters=(QueryParameter("send_email", "send-email", required=True),),
     request_encoding=RequestEncoding.JSON,
     response_kind=ResponseKind.JSON,
     semantics=OperationSemantics(
@@ -107,7 +105,7 @@ USERS_LIST = Operation(
         QueryParameter("page", "page"),
         QueryParameter("page_size", "page-size"),
         QueryParameter("memberships", "memberships"),
-        QueryParameter("include_roles", "include-roles"),  # required query parameter
+        QueryParameter("include_roles", "include-roles", required=True),
     ),
     request_encoding=RequestEncoding.NONE,
     response_kind=ResponseKind.JSON,

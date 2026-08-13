@@ -1,5 +1,8 @@
 """Public-method wiring: invoice_items (3 operations)."""
 
+import pytest
+
+from clockify.errors import ClockifyConfigurationError
 from clockify.models import InvoiceDtoFull
 
 from ._harness import assert_wired, make_client
@@ -53,6 +56,15 @@ async def test_delete_by_order_returns_full_invoice() -> None:
         url="https://api.clockify.me/api/v1/workspaces/w1/invoices/i1/items/1",
     )
     assert isinstance(invoice, InvoiceDtoFull)
+
+
+async def test_delete_rejects_non_positive_order_before_transport() -> None:
+    client, capture = make_client(json=INVOICE_JSON)
+
+    with pytest.raises(ClockifyConfigurationError, match="order must be at least 1"):
+        await client.invoice_items.delete("i1", 0, workspace_id="w1")
+
+    assert capture.requests == []
 
 
 async def test_import_items_default_workspace() -> None:

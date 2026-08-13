@@ -62,6 +62,24 @@ async def test_last_page_header_on_tags_list(client: ClockifyClient) -> None:
     assert response.last_page in (True, False)  # header present and parseable
 
 
+async def test_response_aware_page_keeps_last_page(client: ClockifyClient) -> None:
+    from pydantic import TypeAdapter
+
+    from clockify import Page
+    from clockify.models import TagDto
+
+    response = await client.raw.call(
+        "getWorkspacesWorkspaceIdTags",
+        path={"workspaceId": os.environ["CLOCKIFY_WORKSPACE_ID"]},
+        query={"page": 1, "page_size": 1},
+    )
+    items = TypeAdapter(list[TagDto]).validate_python(response.data)
+    page = Page.from_response(response, items=items, page=1, page_size=1)
+    assert page.last_page is response.last_page
+    assert page.request_id == response.request_id
+    assert page.headers is response.headers
+
+
 async def test_tag_create_read_back_delete_zero_residue(client: ClockifyClient) -> None:
     """The additive-write proof: create, read back directly, archive+delete, verify gone."""
     name = f"{RUN_PREFIX}-{secrets.token_hex(3)}"

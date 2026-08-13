@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import TypeAdapter
 
 from clockify.models import TagCreate, TagDto
+from clockify.models.base import ClockifyRequestModel
 from clockify.operations.tags import (
     TAGS_CREATE,
     TAGS_DELETE,
@@ -17,6 +18,11 @@ from clockify.operations.tags import (
 from clockify.resources._base import ResourceBase
 
 _TAG_LIST = TypeAdapter(list[TagDto])
+
+
+class _TagUpdateRequest(ClockifyRequestModel):
+    archived: bool
+    name: str | None = None
 
 
 class TagsResource(ResourceBase):
@@ -47,8 +53,8 @@ class TagsResource(ResourceBase):
         *,
         workspace_id: str | None = None,
         name: str | None = None,
-        strict_name_search: str | None = None,
-        excluded_ids: builtins.list[str] | None = None,
+        strict_name_search: bool | None = None,
+        excluded_ids: str | None = None,
         sort_column: str | None = None,
         sort_order: str | None = None,
         page: int | None = None,
@@ -79,9 +85,10 @@ class TagsResource(ResourceBase):
         workspace_id: str | None = None,
     ) -> TagDto:
         """Full replacement: an omitted `archived` resets to false — resend it."""
+        validated = self._coerce(body, _TagUpdateRequest)
         response = await self._call(
             TAGS_UPDATE,
             path={"workspaceId": self._workspace(workspace_id), "tagId": tag_id},
-            body=dict(body),
+            body=validated,
         )
         return self._adapt(TAGS_UPDATE, response, TagDto)

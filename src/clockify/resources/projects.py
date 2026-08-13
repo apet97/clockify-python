@@ -100,7 +100,7 @@ class ProjectsResource(ResourceBase):
         *,
         workspace_id: str | None = None,
         name: str | None = None,
-        strict_name_search: str | None = None,
+        strict_name_search: bool | None = None,
         archived: bool | None = None,
         billable: bool | None = None,
         clients: builtins.list[str] | None = None,

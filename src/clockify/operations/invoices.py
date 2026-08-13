@@ -75,9 +75,7 @@ INVOICES_EXPORT = Operation(
     service=Service.REGULAR,
     path="/workspaces/{workspaceId}/invoices/{invoiceId}/export",
     path_parameters=("workspaceId", "invoiceId"),
-    query_parameters=(
-        QueryParameter("user_locale", "userLocale"),  # required by live export; default en-US
-    ),
+    query_parameters=(QueryParameter("user_locale", "userLocale", required=True),),
     request_encoding=RequestEncoding.NONE,
     response_kind=ResponseKind.BYTES,  # binary payload; SDK-only read
     semantics=OperationSemantics(

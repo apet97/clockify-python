@@ -128,8 +128,8 @@ class SchedulingResource(ResourceBase):
         project_id: str,
         *,
         workspace_id: str | None = None,
-        start: str | None = None,
-        end: str | None = None,
+        start: str,
+        end: str,
     ) -> ProjectAssignmentsTotal:
         """Live Clockify requires start and end; the GET returns 400 without them."""
         response = await self._call(
@@ -147,10 +147,10 @@ class SchedulingResource(ResourceBase):
         user_id: str,
         *,
         workspace_id: str | None = None,
+        start: str,
+        end: str,
         page: int | None = None,
         page_size: int | None = None,
-        start: str | None = None,
-        end: str | None = None,
     ) -> UserCapacityTotal:
         """start and end are required (yyyy-MM-ddThh:mm:ssZ)."""
         response = await self._call(
@@ -167,9 +167,9 @@ class SchedulingResource(ResourceBase):
         self,
         *,
         workspace_id: str | None = None,
+        start: str,
+        end: str,
         name: str | None = None,
-        start: str | None = None,
-        end: str | None = None,
         sort_column: str | None = None,
         sort_order: str | None = None,
         page: int | None = None,

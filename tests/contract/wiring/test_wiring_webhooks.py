@@ -91,14 +91,14 @@ async def test_list_default_workspace() -> None:
 async def test_list_event_statuses_query_wire_names() -> None:
     client, capture = make_client(json=[{"eventType": "TIMER_STOPPED"}])
     statuses = await client.webhooks.list_event_statuses(
-        "wh1", workspace_id="w1", page=0, size=20, statuses=["FAILED", "OK"]
+        "wh1", workspace_id="w1", page=0, size=20, statuses="FAILED"
     )
     assert_wired(
         capture,
         resource="webhooks",
         method="list_event_statuses",
         url="https://api.clockify.me/api/v1/workspaces/w1/webhooks/wh1/statuses",
-        query={"page": ["0"], "size": ["20"], "statuses": ["FAILED", "OK"]},
+        query={"page": ["0"], "size": ["20"], "statuses": ["FAILED"]},
     )
     assert isinstance(statuses[0], WebhookEventStatusWithLatestLogDtoV1)
 

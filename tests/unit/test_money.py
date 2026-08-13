@@ -21,3 +21,15 @@ def test_minor_times_100_round_trip() -> None:
 def test_rounding_is_nearest_cent() -> None:
     assert major_to_minor(0.005) == 0  # banker's rounding on the exact half
     assert major_to_minor(0.015) == 2
+
+
+def test_rounding_uses_exact_decimal_ties() -> None:
+    assert major_to_minor(0.545) == 54
+    assert major_to_minor(0.575) == 58
+    assert major_to_minor(-0.545) == -54
+    assert major_to_minor(-0.575) == -58
+
+
+def test_minor_times_100_rounding_uses_exact_decimal_ties() -> None:
+    assert major_to_minor_times_100(0.00005) == 0
+    assert major_to_minor_times_100(0.00015) == 2

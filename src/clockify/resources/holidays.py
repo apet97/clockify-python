@@ -69,9 +69,9 @@ class HolidaysResource(ResourceBase):
         self,
         *,
         workspace_id: str | None = None,
-        assigned_to: str | None = None,
-        start: str | None = None,
-        end: str | None = None,
+        assigned_to: str,
+        start: str,
+        end: str,
     ) -> "ListOfHolidayDto":
         """Live Clockify requires all three filters; assigned-to must be a USER id."""
         response = await self._call(

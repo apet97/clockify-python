@@ -77,7 +77,7 @@ async def test_list_query_wire_names() -> None:
         "p1",
         workspace_id="w1",
         name="Des",
-        strict_name_search="true",
+        strict_name_search=True,
         is_active=True,
         page=2,
         page_size=10,

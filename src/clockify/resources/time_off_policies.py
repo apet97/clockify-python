@@ -59,7 +59,7 @@ class TimeOffPoliciesResource(ResourceBase):
         self,
         *,
         workspace_id: str | None = None,
-        page: int | None = None,
+        page: str | None = None,
         page_size: int | None = None,
         name: str | None = None,
         status: str | None = None,

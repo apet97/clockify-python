@@ -40,6 +40,13 @@ def test_aliases_round_trip_wire_names() -> None:
     assert tag.model_dump(by_alias=True)["workspaceId"] == "w"
 
 
+def test_leading_underscore_wire_field_is_a_real_model_field() -> None:
+    row = models.SharedReportGroupRow.model_validate({"_id": "group-1"})
+    assert row.id_ == "group-1"
+    assert row.model_extra == {}
+    assert row.model_dump(by_alias=True)["_id"] == "group-1"
+
+
 def test_no_model_field_is_silently_any() -> None:
     """`Any` may appear only where the spec genuinely has an unconstrained node."""
     for cls in model_classes():

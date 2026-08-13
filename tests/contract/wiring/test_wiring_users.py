@@ -54,6 +54,18 @@ async def test_add_to_workspace_send_email_wire_name() -> None:
     assert isinstance(workspace, Workspace)
 
 
+async def test_add_to_workspace_sends_documented_default() -> None:
+    client, capture = make_client(status=201, json=WORKSPACE_JSON)
+    await client.users.add_to_workspace({"email": "a@b.c"}, workspace_id="w1")
+    assert_wired(
+        capture,
+        resource="users",
+        method="add_to_workspace",
+        url="https://api.clockify.me/api/v1/workspaces/w1/users",
+        query={"send-email": ["true"]},
+    )
+
+
 async def test_filter_is_post_read() -> None:
     client, capture = make_client(json=[USER_JSON])
     users = await client.users.filter({"name": "Ada"}, workspace_id="w1")
@@ -89,7 +101,7 @@ async def test_list_query_wire_names() -> None:
         email="a@b.c",
         project_id="pr1",
         status="ACTIVE",
-        account_statuses=["ACTIVE", "LIMITED"],
+        account_statuses="ACTIVE",
         name="Ada",
         sort_column="NAME",
         sort_order="ASCENDING",
@@ -107,7 +119,7 @@ async def test_list_query_wire_names() -> None:
             "email": ["a@b.c"],
             "project-id": ["pr1"],
             "status": ["ACTIVE"],
-            "account-statuses": ["ACTIVE", "LIMITED"],
+            "account-statuses": ["ACTIVE"],
             "name": ["Ada"],
             "sort-column": ["NAME"],
             "sort-order": ["ASCENDING"],
@@ -123,7 +135,13 @@ async def test_list_query_wire_names() -> None:
 async def test_list_default_workspace() -> None:
     client, capture = make_client(json=[])
     await client.users.list()
-    assert "/workspaces/w-default/users" in str(capture.request.url)
+    assert_wired(
+        capture,
+        resource="users",
+        method="list",
+        url="https://api.clockify.me/api/v1/workspaces/w-default/users",
+        query={"include-roles": ["false"]},
+    )
 
 
 async def test_list_managers_query_wire_names() -> None:

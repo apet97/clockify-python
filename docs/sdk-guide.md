@@ -16,6 +16,11 @@ Resource list methods fetch one page. Use `Page`, `iter_pages`, and `iter_all`
 when you need bounded iteration. Page-size wire names differ by operation.
 `Last-Page` is authoritative when the operation declares it.
 
+Use `Page.from_response(...)` when the iterator fetches a raw `ClockifyResponse`.
+This constructor keeps the `Last-Page` header, request ID, and response headers.
+It prevents a short page from ending iteration when `Last-Page: false` says that
+another page exists.
+
 See `examples/sdk_iterate_time_entries.py`.
 
 ## Reports

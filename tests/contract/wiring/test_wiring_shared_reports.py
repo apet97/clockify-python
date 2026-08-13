@@ -1,6 +1,9 @@
 """Public-method wiring: shared_reports (5 operations)."""
 
-from clockify.models import SharedReport, SharedReportListEnvelope
+import pytest
+
+from clockify.errors import ClockifyConfigurationError
+from clockify.models import SharedReport, SharedReportCreate, SharedReportListEnvelope
 
 from ._harness import assert_wired, make_client
 
@@ -124,3 +127,49 @@ async def test_view_public_csv_text() -> None:
     client, _capture = make_client(content=b"Project,Time\np1,3600\n", content_type="text/csv")
     data = await client.shared_reports.view_public("sr1", export_type="CSV")
     assert "Project,Time" in data.text
+
+
+async def test_create_rejects_unknown_field_on_prebuilt_model() -> None:
+    client, capture = make_client(json=REPORT_JSON)
+    body = SharedReportCreate.model_validate({**CREATE_BODY, "topTypo": "sent"})
+
+    with pytest.raises(ClockifyConfigurationError, match="topTypo"):
+        await client.shared_reports.create(body, workspace_id="w1")
+
+    assert capture.requests == []
+
+
+async def test_create_rejects_nested_unknown_field_before_transport() -> None:
+    client, capture = make_client(json=REPORT_JSON)
+    body = {
+        **CREATE_BODY,
+        "filter": {
+            "dateRangeStart": "2026-01-01T00:00:00Z",
+            "dateRangeEnd": "2026-01-07T23:59:59Z",
+            "exportType": "JSON",
+            "nestedTypo": "sent",
+        },
+    }
+
+    with pytest.raises(ClockifyConfigurationError, match=r"filter\.nestedTypo"):
+        await client.shared_reports.create(body, workspace_id="w1")
+
+    assert capture.requests == []
+
+
+async def test_unknown_field_error_is_bounded() -> None:
+    client, capture = make_client(json=REPORT_JSON)
+    body = SharedReportCreate.model_validate(
+        {**CREATE_BODY, **{f"extra{index:02}": index for index in range(12)}}
+    )
+
+    with pytest.raises(ClockifyConfigurationError) as info:
+        await client.shared_reports.create(body, workspace_id="w1")
+
+    message = str(info.value)
+    assert len(message) <= 500
+    assert "extra00" in message
+    assert "extra09" in message
+    assert "extra10" not in message
+    assert "; 2 more" in message
+    assert capture.requests == []

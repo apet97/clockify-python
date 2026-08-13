@@ -100,7 +100,7 @@ async def test_list_query_wire_names() -> None:
     projects = await client.projects.list(
         workspace_id="w1",
         name="Web",
-        strict_name_search="true",
+        strict_name_search=True,
         archived=False,
         billable=True,
         clients=["c1", "c2"],

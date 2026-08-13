@@ -236,6 +236,11 @@ def snake(name: str) -> str:
     out = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", out)
     out = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", "_", out)
     out = out.lower()
+    if out.startswith("_"):
+        out = out.lstrip("_")
+        if not out:
+            raise UnsupportedSchema(f"cannot derive public identifier from wire name {name!r}")
+        out += "_"
     if keyword.iskeyword(out):
         out += "_"
     if not out.isidentifier():

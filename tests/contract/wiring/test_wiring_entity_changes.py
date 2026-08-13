@@ -1,5 +1,8 @@
 """Public-method wiring: entity_changes (3 operations)."""
 
+import pytest
+
+from clockify.errors import ClockifyConfigurationError
 from clockify.models import EntityChangeDocument
 
 from ._harness import assert_wired, make_client
@@ -69,3 +72,12 @@ async def test_list_updated_default_workspace() -> None:
         query={"type": ["PROJECTS"]},
     )
     assert docs == []
+
+
+async def test_required_type_rejects_none_before_transport() -> None:
+    client, capture = make_client(json=[])
+
+    with pytest.raises(ClockifyConfigurationError, match="required query parameter 'type'"):
+        await client.entity_changes.list_created(type=None)  # type: ignore[arg-type]
+
+    assert capture.requests == []
