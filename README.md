@@ -9,7 +9,7 @@ The distribution contains:
 - `clockify`: a typed async SDK with all 168 known Clockify operations on 29 resources.
 - `clockify_mcp`: a structurally read-only Model Context Protocol (MCP) server.
 
-Documentation version: `0.1.1`. The distribution is available from public
+Documentation version: `0.1.2`. The distribution is available from public
 PyPI. The default MCP server registers 60 raw reads and five workflows. It
 registers zero writes.
 
@@ -67,7 +67,7 @@ The MCP contract is exact:
 - zero registered writes.
 
 The SDK exposes writes to explicit Python callers. MCP does not. See
-[docs/mcp-guide.md](docs/mcp-guide.md) and
+[docs/mcp.md](docs/mcp.md) and
 [examples/mcp_config.example.json](examples/mcp_config.example.json).
 
 ## SDK behavior

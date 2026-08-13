@@ -29,3 +29,12 @@ Encoded as ordinary implementation plus focused regression tests
 - Live 2026-08-12: workspace `features` contains enum values missing from the
   spec, and `entityCreationPermissions` values arrive as plain strings; response
   models accept both shapes.
+- Live 2026-08-13: the official spec marks `submitApprovalRequest`
+  (`POST /approval-requests`) and `submitApprovalRequestForUser`
+  (`POST /approval-requests/users/{userId}`) as deprecated. The typed variants
+  (`approvals.submit_with_type`, `approvals.submit_for_user_with_type`) are the
+  successors. This SDK keeps both deprecated operations; the routes still work.
+- Live 2026-08-13: the official spec renamed the typed-submit path parameter
+  from `{approvalRequestId}` to `{type}`, confirming what this SDK already
+  documents: the segment is the approval type (`TIMESHEET` | `EXPENSE`), not an
+  approval request ID.

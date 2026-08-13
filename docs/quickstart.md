@@ -2,14 +2,14 @@
 
 ## 1. Install
 
-For version `0.1.1`, create an environment and install the package:
+For version `0.1.2`, create an environment and install the package:
 
 ```bash
 uv venv .venv
-uv pip install --python .venv/bin/python clockify-python-115==0.1.1
+uv pip install --python .venv/bin/python clockify-python-115==0.1.2
 ```
 
-Install `clockify-python-115[mcp]==0.1.1` when you need the MCP server.
+Install `clockify-python-115[mcp]==0.1.2` when you need the MCP server.
 
 ## 2. Configure one credential
 

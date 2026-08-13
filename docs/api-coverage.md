@@ -1,6 +1,6 @@
 # API coverage
 
-Version `0.1.1` contains:
+Version `0.1.2` contains:
 
 | Contract | Count |
 |---|---:|

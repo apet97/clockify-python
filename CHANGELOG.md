@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 (2026-08-13)
+
+- Documented the upstream deprecation of `submitApprovalRequest` and
+  `submitApprovalRequestForUser`; the typed submit variants are the successors.
+- Documented the upstream rename of the typed-submit path parameter to `{type}`.
+- Merged `docs/mcp-guide.md` into `docs/mcp.md`.
+- No behavior change.
+
 ## 0.1.1 (2026-08-13)
 
 - Bound request authorization, retry behavior, and decoding to registered operations.

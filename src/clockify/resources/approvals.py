@@ -89,6 +89,7 @@ class ApprovalsResource(ResourceBase):
         *,
         workspace_id: str | None = None,
     ) -> ApprovalRequestDtoV1:
+        """Deprecated upstream (live spec 2026-08-13); prefer `submit_with_type`."""
         validated = self._coerce(body, SubmitApprovalRequestRequest)
         response = await self._call(
             APPROVALS_SUBMIT,
@@ -104,6 +105,7 @@ class ApprovalsResource(ResourceBase):
         *,
         workspace_id: str | None = None,
     ) -> ApprovalRequestDtoV1:
+        """Deprecated upstream (live spec 2026-08-13); prefer `submit_for_user_with_type`."""
         validated = self._coerce(body, SubmitApprovalRequestRequest)
         response = await self._call(
             APPROVALS_SUBMIT_FOR_USER,

@@ -26,7 +26,7 @@ def test_release_files_and_pep561_markers_exist() -> None:
         "NOTICE.md",
         "docs/quickstart.md",
         "docs/sdk-guide.md",
-        "docs/mcp-guide.md",
+        "docs/mcp.md",
         "docs/api-coverage.md",
         "examples/sdk_list_projects.py",
         "examples/sdk_iterate_time_entries.py",
