@@ -8,13 +8,14 @@ from clockify.config import USER_AGENT
 ROOT = Path(__file__).parents[2]
 
 
-def test_readme_states_independence_and_read_only_mcp_contract() -> None:
+def test_readme_states_independence_and_the_mcp_contract() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     normalized = " ".join(readme.split())
     assert "independent community project" in readme
     assert "not affiliated with, endorsed by, or sponsored by CAKE.com or Clockify" in normalized
-    assert "registers zero writes" in readme
-    quickstart = readme.split("## Read-only SDK quickstart", 1)[1].split("## MCP quickstart", 1)[0]
+    assert "186 tools" in readme
+    assert "CLOCKIFY_MCP_READ_ONLY" in readme
+    quickstart = readme.split("## SDK quickstart", 1)[1].split("## MCP quickstart", 1)[0]
     assert ".create(" not in quickstart
     assert ".update(" not in quickstart
     assert ".delete(" not in quickstart

@@ -1,6 +1,6 @@
 # API coverage
 
-Version `0.1.2` contains:
+Version `0.2.0` contains:
 
 | Contract | Count |
 |---|---:|
@@ -14,8 +14,8 @@ Version `0.1.2` contains:
 | Regular / reports / audit-log operations | 157 / 10 / 1 |
 | Multipart operations | 3 |
 | Reachable component-schema roots | 339 |
-| MCP raw reads / workflows / total | 60 / 5 / 65 |
-| Registered MCP writes | 0 |
+| MCP raw reads / raw writes / workflows / orientation / total | 60 / 104 / 18 / 4 / 186 |
+| MCP write tiers | 5 routine time-entry tools + 7 routine workflows; all other writes gated |
 
 `tests/contract/test_complete_surface.py` reconciles the runtime registry with
 the corrected OpenAPI at the pinned sibling commit. The 168-case wiring suite

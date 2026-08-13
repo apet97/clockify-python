@@ -7,11 +7,13 @@ Clockify name only to identify the service that it supports.
 The distribution contains:
 
 - `clockify`: a typed async SDK with all 168 known Clockify operations on 29 resources.
-- `clockify_mcp`: a structurally read-only Model Context Protocol (MCP) server.
+- `clockify_mcp`: a full-featured Model Context Protocol (MCP) server with a
+  sealed approval gate for guarded writes.
 
-Documentation version: `0.1.2`. The distribution is available from public
-PyPI. The default MCP server registers 60 raw reads and five workflows. It
-registers zero writes.
+Documentation version: `0.2.0`. The distribution is available from public
+PyPI. The default MCP server registers 186 tools: 60 raw reads, 104 guarded
+or routine writes, 18 workflows, and 4 orientation tools. Set
+`CLOCKIFY_MCP_READ_ONLY=true` for the structurally read-only 65-tool build.
 
 ## Install
 
@@ -24,7 +26,7 @@ uv add "clockify-python-115[mcp]"
 
 Python 3.11, 3.12, 3.13, and 3.14 are supported and tested.
 
-## Read-only SDK quickstart
+## SDK quickstart
 
 ```python
 import asyncio
@@ -52,7 +54,8 @@ See [docs/quickstart.md](docs/quickstart.md) and
 ## MCP quickstart
 
 ```bash
-clockify-mcp
+clockify-mcp                    # stdio (default)
+clockify-mcp --http --port 8000 # Streamable HTTP, stateful sessions
 ```
 
 Configure exactly one of `CLOCKIFY_API_KEY` or `CLOCKIFY_ADDON_TOKEN`. You can
@@ -60,14 +63,18 @@ also configure `CLOCKIFY_WORKSPACE_ID`.
 
 The MCP contract is exact:
 
-- 60 raw read tools;
-- five workflows: `clockify_status`, `clockify_workspace_overview`,
-  `clockify_review_day`, `clockify_review_week`, and `clockify_doctor`;
-- 65 tools in total;
-- zero registered writes.
+- 60 raw read tools and 104 raw write tools;
+- 18 workflows (5 read, 7 routine write, 6 gated write) and 4 orientation
+  tools: 186 tools in total;
+- routine writes (personal time entries, daily tracking) execute directly and
+  are never retried;
+- every other write is guarded: the user approves a deterministic preview of
+  the exact request before anything is sent, bound by a single-use
+  confirmation;
+- `CLOCKIFY_MCP_READ_ONLY=true` serves the read-only build (65 tools, zero
+  writes, structurally unable to mutate).
 
-The SDK exposes writes to explicit Python callers. MCP does not. See
-[docs/mcp.md](docs/mcp.md) and
+See [docs/mcp.md](docs/mcp.md) and
 [examples/mcp_config.example.json](examples/mcp_config.example.json).
 
 ## SDK behavior

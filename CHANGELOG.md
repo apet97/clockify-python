@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0 (2026-08-13)
+
+- Made the full server the default `clockify-mcp` surface: 186 tools.
+- Added 104 raw write tools covering every mutating operation except binary
+  file upload and workspace creation.
+- Added the sealed write-approval gate for guarded writes: deterministic
+  preview of the exact request, model-invisible approval, single-use
+  confirmation, byte-exact dispatch, no automatic retry.
+- Kept personal time-entry tools and daily-tracking workflows on the routine
+  tier (direct execution, single attempt).
+- Added 13 write workflows, including SSRF-guarded webhook setup and
+  prefix-scoped demo cleanup with archive-then-delete ordering.
+- Added 4 orientation tools, 6 guide resources, and 2 prompts.
+- Added Streamable HTTP transport (`clockify-mcp --http`).
+- Added `CLOCKIFY_MCP_READ_ONLY=true` for the 65-tool read-only build.
+- Added stable tool error codes with recovery hints and name resolution with
+  clarification receipts.
+
 ## 0.1.2 (2026-08-13)
 
 - Documented the upstream deprecation of `submitApprovalRequest` and
