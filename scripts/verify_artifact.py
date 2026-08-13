@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import tomllib
 import zipfile
 from pathlib import Path
 
@@ -79,21 +80,21 @@ def install(python: Path, requirement: str) -> None:
     run("uv", "pip", "install", "--python", str(python), requirement)
 
 
-def prove_core_only(python: Path) -> None:
+def prove_core_only(python: Path, expected_version: str) -> None:
     code = (
         "import importlib.metadata as m; "
         "from clockify import ClockifyClient; "
         "assert ClockifyClient.__name__ == 'ClockifyClient'; "
-        "assert m.version('clockify-python-115') == '0.1.0'; "
+        f"assert m.version('clockify-python-115') == {expected_version!r}; "
         "assert not any(d.metadata['Name'].lower() == 'mcp' for d in m.distributions())"
     )
     run(str(python), "-I", "-c", code, cwd=python.parent)
 
 
-def prove_sdist(sdist: Path, python_version: str, scratch: Path) -> None:
+def prove_sdist(sdist: Path, python_version: str, scratch: Path, expected_version: str) -> None:
     python = create_venv(scratch / "sdist", python_version)
     install(python, str(sdist))
-    prove_core_only(python)
+    prove_core_only(python, expected_version)
 
 
 def prove_console(python: Path) -> None:
@@ -187,6 +188,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    project = tomllib.loads(
+        (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    expected_version = str(project["project"]["version"])
     wheel = args.wheel.resolve()
     inspect_wheel(wheel)
     sdist = args.sdist.resolve() if args.sdist else None
@@ -196,7 +201,7 @@ def main() -> int:
         scratch = Path(temp)
         core_python = create_venv(scratch / "core", args.python_version)
         install(core_python, str(wheel))
-        prove_core_only(core_python)
+        prove_core_only(core_python, expected_version)
         prove_installed_typing(core_python, scratch)
 
         mcp_python = create_venv(scratch / "mcp", args.python_version)
@@ -204,7 +209,7 @@ def main() -> int:
         prove_console(mcp_python)
         asyncio.run(prove_stdio(mcp_python))
         if sdist is not None:
-            prove_sdist(sdist, args.python_version, scratch)
+            prove_sdist(sdist, args.python_version, scratch, expected_version)
     print(f"verified {wheel.name} on Python {args.python_version}")
     return 0
 

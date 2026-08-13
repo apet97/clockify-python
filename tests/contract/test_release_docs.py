@@ -1,6 +1,9 @@
 """Focused release-documentation and packaging invariants."""
 
+import tomllib
 from pathlib import Path
+
+from clockify.config import USER_AGENT
 
 ROOT = Path(__file__).parents[2]
 
@@ -49,5 +52,28 @@ def test_ci_verifies_the_built_artifact_on_every_supported_python() -> None:
     assert '["3.11", "3.12", "3.13", "3.14"]' in workflow
     assert "actions/download-artifact" in workflow
     assert "scripts/verify_artifact.py" in workflow
-    assert "--wheel dist/clockify_python_115-0.1.0-py3-none-any.whl" in workflow
-    assert "--sdist dist/clockify_python_115-0.1.0.tar.gz" in workflow
+    assert "wheels=(dist/*.whl)" in workflow
+    assert "sdists=(dist/*.tar.gz)" in workflow
+    assert "${#wheels[@]} -eq 1" in workflow
+    assert "${#sdists[@]} -eq 1" in workflow
+    assert "clockify_python_115-0.1.0" not in workflow
+
+
+def test_user_agent_version_matches_project_version() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert f"clockify-python-115/{project['project']['version']}" == USER_AGENT
+
+
+def test_release_docs_use_the_project_version_and_private_security_route() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    version = str(project["project"]["version"])
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    quickstart = (ROOT / "docs/quickstart.md").read_text(encoding="utf-8")
+    coverage = (ROOT / "docs/api-coverage.md").read_text(encoding="utf-8")
+    security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+
+    assert f"Documentation version: `{version}`" in readme
+    assert f"clockify-python-115=={version}" in quickstart
+    assert f"clockify-python-115[mcp]=={version}" in quickstart
+    assert f"Version `{version}` contains" in coverage
+    assert "https://github.com/apet97/clockify-python/security/advisories/new" in security

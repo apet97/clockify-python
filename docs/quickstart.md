@@ -2,15 +2,14 @@
 
 ## 1. Install
 
-Build and install the local release candidate:
+For version `0.1.1`, create an environment and install the package:
 
 ```bash
-uv build
 uv venv .venv
-uv pip install --python .venv/bin/python dist/clockify_python_115-0.1.0-py3-none-any.whl
+uv pip install --python .venv/bin/python clockify-python-115==0.1.1
 ```
 
-Use the wheel with `[mcp]` only when you need the MCP server.
+Install `clockify-python-115[mcp]==0.1.1` when you need the MCP server.
 
 ## 2. Configure one credential
 

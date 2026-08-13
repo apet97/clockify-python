@@ -9,20 +9,13 @@ The distribution contains:
 - `clockify`: a typed async SDK with all 168 known Clockify operations on 29 resources.
 - `clockify_mcp`: a structurally read-only Model Context Protocol (MCP) server.
 
-Release status: `0.1.0` is a local release candidate. It is not published to
-PyPI yet. The default MCP server registers 60 raw reads and five workflows. It
+Documentation version: `0.1.1`. The distribution is available from public
+PyPI. The default MCP server registers 60 raw reads and five workflows. It
 registers zero writes.
 
 ## Install
 
-Install the local release candidate after `uv build`:
-
-```bash
-uv pip install dist/clockify_python_115-0.1.0-py3-none-any.whl
-uv pip install "dist/clockify_python_115-0.1.0-py3-none-any.whl[mcp]"
-```
-
-After publication, use:
+Install the SDK or the SDK with the optional MCP server:
 
 ```bash
 uv add clockify-python-115

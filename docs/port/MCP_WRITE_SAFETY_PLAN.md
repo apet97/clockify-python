@@ -551,7 +551,8 @@ Immediately before first dispatch, read those fields again and compare.
 
 - **same fingerprint:** continue;
 - **changed fingerprint before final approval round:** rendered preview changes and the client is asked again;
-- **changed fingerprint after approval but before dispatch:** fail `state_changed_after_approval`; consume the nonce; require a new call;
+- **changed fingerprint after approval but before dispatch:** consume the nonce;
+  return `failed_before_dispatch`; require a new preview and call;
 - **no read route exists:** preview states that no precondition read is possible; use exact arguments and post-write reconciliation only;
 - **Clockify offers no conditional write:** document the residual race between final read and dispatch.
 

@@ -1,7 +1,7 @@
 """Regression guards for write-safety review findings A and (preview) headline.
 
 Findings A (plan-size cap) and P (preview shows the bound body) are fixed;
-these tests now guard the corrected behavior. See docs/mcp-write-safety-review.md.
+these tests now guard the corrected behavior.
 """
 
 import json

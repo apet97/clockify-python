@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clockify-python-115"
-version = "0.1.0"
+version = "0.1.1"
 description = "Independent async Clockify SDK and read-only MCP server for Python"
 readme = "README.md"
 license = { file = "LICENSE" }

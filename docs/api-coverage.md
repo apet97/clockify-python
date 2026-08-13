@@ -1,6 +1,6 @@
 # API coverage
 
-The `0.1.0` release candidate contains:
+Version `0.1.1` contains:
 
 | Contract | Count |
 |---|---:|

@@ -1,8 +1,8 @@
 # Security
 
 Do not open a public issue that contains a credential, private workspace data,
-or an unpatched vulnerability. After the owner creates a GitHub remote, report
-vulnerabilities through that repository's private security-advisory feature.
+or an unpatched vulnerability. Report a vulnerability through the repository's
+[private security advisory form](https://github.com/apet97/clockify-python/security/advisories/new).
 
 Current guarantees:
 

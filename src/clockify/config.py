@@ -16,7 +16,7 @@ DEFAULT_SERVICE_URLS: dict[Service, str] = {
 # Sane API-client defaults; callers can replace globally or per call.
 DEFAULT_TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=30.0, pool=10.0)
 
-USER_AGENT = "clockify-python-115/0.1.0"
+USER_AGENT = "clockify-python-115/0.1.1"
 
 
 def _valid_attempt_count(value: object) -> bool:
