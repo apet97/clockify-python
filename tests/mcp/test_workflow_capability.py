@@ -79,13 +79,17 @@ def test_capability_surface_is_reads_only(backend: MockBackend) -> None:
         "projects",
         "tags",
         "reports",
+        "clients",
+        "tasks",
+        "expense_categories",
+        "time_off_policies",
     }
     assert set(WorkflowReadClient.__slots__) == expected
     # Each namespace exposes exactly its reads — no create/update/delete anywhere.
-    for namespace in ("users", "workspaces", "time_entries", "projects", "tags", "reports"):
+    for namespace in sorted(expected - {"workspace_id"}):
         slots = set(getattr(capability, namespace).__slots__)
         assert not slots & {"create", "update", "delete", "duplicate"}, namespace
-    assert set(capability.time_entries.__slots__) == {"list_in_progress", "list_for_user"}
+    assert set(capability.time_entries.__slots__) == {"get", "list_in_progress", "list_for_user"}
     assert set(capability.tags.__slots__) == {"list"}
 
 

@@ -118,7 +118,23 @@ CASES = [
 ]
 
 # Tools proven by their own dedicated files, not by a generic case here.
-DEDICATED = {"clockify_tags_create"}  # tests/mcp/writes/test_wave1_tags_create.py
+DEDICATED = {
+    "clockify_tags_create",  # tests/mcp/writes/test_wave1_tags_create.py
+    # Write workflows: tests/mcp/test_workflows_write.py
+    "clockify_start_work",
+    "clockify_stop_work",
+    "clockify_switch_work",
+    "clockify_log_work",
+    "clockify_fix_entry",
+    "clockify_create_work_package",
+    "clockify_demo_seed",
+    "clockify_invoice_client_work",
+    "clockify_record_expense",
+    "clockify_request_time_off",
+    "clockify_schedule_work",
+    "clockify_setup_webhook",
+    "clockify_demo_cleanup",
+}
 
 
 def minimal_instance(model: type[Any]) -> Any:

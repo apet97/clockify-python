@@ -129,6 +129,21 @@ _READ_WORKFLOWS = (
 )
 
 _WRITE_TOOLS: dict[str, Risk] = {
+    # Write workflows.
+    "clockify_start_work": Risk.ROUTINE_WRITE,
+    "clockify_stop_work": Risk.ROUTINE_WRITE,
+    "clockify_switch_work": Risk.ROUTINE_WRITE,
+    "clockify_log_work": Risk.ROUTINE_WRITE,
+    "clockify_fix_entry": Risk.ROUTINE_WRITE,
+    "clockify_create_work_package": Risk.ROUTINE_WRITE,
+    "clockify_demo_seed": Risk.ROUTINE_WRITE,
+    "clockify_invoice_client_work": Risk.BUSINESS_WRITE,
+    "clockify_record_expense": Risk.BUSINESS_WRITE,
+    "clockify_request_time_off": Risk.BUSINESS_WRITE,
+    "clockify_schedule_work": Risk.BUSINESS_WRITE,
+    "clockify_setup_webhook": Risk.EXTERNAL_SIDE_EFFECT,
+    "clockify_demo_cleanup": Risk.DESTRUCTIVE,
+    # Raw write tools.
     "clockify_tags_create": Risk.BUSINESS_WRITE,
     "clockify_tags_update": Risk.BUSINESS_WRITE,
     "clockify_tags_delete": Risk.DESTRUCTIVE,

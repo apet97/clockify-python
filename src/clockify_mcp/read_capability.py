@@ -23,6 +23,34 @@ class _UsersReads:
         self.list = client.users.list
 
 
+class _ClientsReads:
+    __slots__ = ("list",)
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.list = client.clients.list
+
+
+class _TasksReads:
+    __slots__ = ("list",)
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.list = client.tasks.list
+
+
+class _ExpenseCategoriesReads:
+    __slots__ = ("list",)
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.list = client.expense_categories.list
+
+
+class _TimeOffPoliciesReads:
+    __slots__ = ("list",)
+
+    def __init__(self, client: ClockifyClient) -> None:
+        self.list = client.time_off_policies.list
+
+
 class _WorkspacesReads:
     __slots__ = ("get",)
 
@@ -31,11 +59,12 @@ class _WorkspacesReads:
 
 
 class _TimeEntriesReads:
-    __slots__ = ("list_for_user", "list_in_progress")
+    __slots__ = ("get", "list_for_user", "list_in_progress")
 
     def __init__(self, client: ClockifyClient) -> None:
         self.list_in_progress = client.time_entries.list_in_progress
         self.list_for_user = client.time_entries.list_for_user
+        self.get = client.time_entries.get
 
 
 class _ProjectsReads:
@@ -61,13 +90,17 @@ class _ReportsReads:
 
 
 class WorkflowReadClient:
-    """Read-only facade over exactly the calls the five workflows require."""
+    """Read-only facade over exactly the calls the workflows require."""
 
     __slots__ = (
+        "clients",
+        "expense_categories",
         "projects",
         "reports",
         "tags",
+        "tasks",
         "time_entries",
+        "time_off_policies",
         "users",
         "workspace_id",
         "workspaces",
@@ -81,3 +114,7 @@ class WorkflowReadClient:
         self.projects = _ProjectsReads(client)
         self.tags = _TagsReads(client)
         self.reports = _ReportsReads(client)
+        self.clients = _ClientsReads(client)
+        self.tasks = _TasksReads(client)
+        self.expense_categories = _ExpenseCategoriesReads(client)
+        self.time_off_policies = _TimeOffPoliciesReads(client)
