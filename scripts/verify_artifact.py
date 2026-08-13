@@ -101,7 +101,7 @@ def prove_console(python: Path) -> None:
     result = run(str(python), "-I", "-m", "clockify_mcp", "--help", cwd=python.parent)
     if result.stdout:
         raise AssertionError("clockify-mcp --help wrote non-protocol text to stdout")
-    if "read-only Clockify MCP server" not in result.stderr:
+    if "Clockify MCP server" not in result.stderr:
         raise AssertionError("clockify-mcp --help did not describe the installed server")
 
 
@@ -133,26 +133,26 @@ def prove_installed_typing(python: Path, scratch: Path) -> None:
 def installed_expected_tools(python: Path) -> set[str]:
     code = (
         "import json; "
-        "from clockify.operations.model import ResponseKind; "
-        "from clockify.operations.registry import ALL_OPERATIONS; "
-        "print(json.dumps(sorted('clockify_' + op.resource + '_' + op.sdk_method "
-        "for op in ALL_OPERATIONS if not op.semantics.mutates "
-        "and op.response_kind is not ResponseKind.BYTES)))"
+        "from clockify_mcp.risk import RISK_BY_TOOL; "
+        "print(json.dumps(sorted(RISK_BY_TOOL)))"
     )
     result = run(str(python), "-I", "-c", code, cwd=python.parent)
-    return set(json.loads(result.stdout)) | WORKFLOWS
+    return set(json.loads(result.stdout))
 
 
 async def prove_stdio(python: Path) -> None:
     expected = installed_expected_tools(python)
-    if len(expected - WORKFLOWS) != 60 or len(expected) != 65:
-        raise AssertionError("installed operation registry does not define the 60/5/65 contract")
+    if len(expected) != 186 or "clockify_tags_create" not in expected:
+        raise AssertionError("installed risk map does not define the 186-tool contract")
+    if not expected >= WORKFLOWS:
+        raise AssertionError("installed risk map is missing the read workflows")
     env = {
         **os.environ,
         "CLOCKIFY_API_KEY": "artifact-test-key",
         "CLOCKIFY_WORKSPACE_ID": "artifact-workspace",
     }
     env.pop("CLOCKIFY_ADDON_TOKEN", None)
+    env.pop("CLOCKIFY_MCP_READ_ONLY", None)
     params = StdioServerParameters(command=str(python), args=["-I", "-m", "clockify_mcp"], env=env)
     async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
         initialized = await session.initialize()
@@ -176,6 +176,16 @@ async def prove_stdio(python: Path) -> None:
             or "JSON or CSV" not in first.text
         ):
             raise AssertionError("installed controlled pre-network rejection failed")
+    read_only_env = {**env, "CLOCKIFY_MCP_READ_ONLY": "true"}
+    params = StdioServerParameters(
+        command=str(python), args=["-I", "-m", "clockify_mcp"], env=read_only_env
+    )
+    async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
+        await session.initialize()
+        tools = await session.list_tools()
+        names = {tool.name for tool in tools.tools}
+        if len(names) != 65 or "clockify_tags_create" in names:
+            raise AssertionError("read-only flag did not serve the 65-tool build")
 
 
 def parse_args() -> argparse.Namespace:
