@@ -27,10 +27,10 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
 
     @server.tool(name="clockify_holidays_list_in_period", annotations=READ_ANNOTATIONS)
     async def clockify_holidays_list_in_period(
+        assigned_to: str,
+        start: str,
+        end: str,
         workspace_id: str | None = None,
-        assigned_to: str | None = None,
-        start: str | None = None,
-        end: str | None = None,
     ) -> ReadResult:
         """List holidays in a period. Live Clockify requires all of `assigned_to`,
         `start`, and `end` (yyyy-MM-ddThh:mm:ssZ); `assigned_to` must be a USER id —

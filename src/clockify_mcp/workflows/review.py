@@ -32,9 +32,12 @@ def _window(day: date, days: int, timezone_name: str) -> tuple[str, str]:
 
 def _parse_date(value: str, field: str) -> date:
     try:
-        return date.fromisoformat(value)
+        parsed = date.fromisoformat(value)
     except ValueError as exc:
         raise ToolError(f"{field} must be an ISO date (YYYY-MM-DD), got {value!r}") from exc
+    if value != parsed.isoformat():
+        raise ToolError(f"{field} must be an ISO date (YYYY-MM-DD), got {value!r}")
+    return parsed
 
 
 async def _entries_between(

@@ -84,6 +84,34 @@ async def test_workspace_overview_counts_are_bounded_and_honest(
     assert payload["users"] == {"count": 50, "exact": False}  # full page -> more may exist
     assert payload["projects"] == {"count": 1, "exact": True}
     assert payload["tags"] == {"count": 0, "exact": True}
+    assert "exact=false means more may exist" in payload["note"]
+
+
+async def test_status_reports_active_workspace_source_when_no_default(
+    backend: MockBackend,
+) -> None:
+    from clockify_mcp.context import ServerConfig
+    from clockify_mcp.server import build_read_only_server
+
+    from .conftest import make_mock_client
+
+    me = {**ME, "defaultWorkspace": None, "activeWorkspace": "w-active"}
+    backend.respond_by_path(
+        {
+            "/user": me,
+            "/workspaces/w-active": {"id": "w-active", "name": "Active"},
+            "/time-entries/status/in-progress": [],
+        }
+    )
+    config = ServerConfig(api_key="test-key", addon_token=None, workspace_id=None)
+    server = build_read_only_server(config, client=make_mock_client(backend, workspace_id=None))
+
+    async with Client(server) as client:
+        result = await client.call_tool("clockify_status", {})
+
+    payload = result_json(result)
+    assert payload["workspace"] == {"id": "w-active", "name": "Active"}
+    assert payload["workspace_source"] == "user active"
 
 
 async def test_review_day_uses_wall_clock_window(server, backend: MockBackend) -> None:  # type: ignore[no-untyped-def]
@@ -130,10 +158,14 @@ async def test_review_day_uses_wall_clock_window(server, backend: MockBackend) -
 async def test_review_day_rejects_bad_inputs_before_network(server, backend: MockBackend) -> None:  # type: ignore[no-untyped-def]
     async with Client(server) as client:
         bad_date = await client.call_tool("clockify_review_day", {"day": "12/08/2026"})
+        compact_date = await client.call_tool("clockify_review_day", {"day": "20260812"})
+        week_date = await client.call_tool("clockify_review_week", {"start_day": "2026-W33-3"})
         bad_zone = await client.call_tool(
             "clockify_review_day", {"day": "2026-08-12", "timezone_name": "Mars/Olympus"}
         )
     assert bad_date.is_error and "ISO date" in bad_date.content[0].text
+    assert compact_date.is_error and "YYYY-MM-DD" in compact_date.content[0].text
+    assert week_date.is_error and "YYYY-MM-DD" in week_date.content[0].text
     assert bad_zone.is_error and "timezone" in bad_zone.content[0].text
     assert backend.requests == []
 
@@ -181,6 +213,58 @@ async def test_doctor_happy_path(server, backend: MockBackend) -> None:  # type:
         result = await client.call_tool("clockify_doctor", {})
     payload = result_json(result)
     assert payload["healthy"] is True
+
+
+async def test_doctor_reaches_default_workspace_when_none_is_configured(
+    backend: MockBackend,
+) -> None:
+    from clockify_mcp.context import ServerConfig
+    from clockify_mcp.server import build_read_only_server
+
+    from .conftest import make_mock_client
+
+    me = {**ME, "defaultWorkspace": "w-fallback", "activeWorkspace": None}
+    backend.respond_by_path(
+        {
+            "/user": me,
+            "/workspaces/w-fallback": {"id": "w-fallback", "name": "Fallback"},
+        }
+    )
+    config = ServerConfig(api_key="test-key", addon_token=None, workspace_id=None)
+    server = build_read_only_server(config, client=make_mock_client(backend, workspace_id=None))
+
+    async with Client(server) as client:
+        result = await client.call_tool("clockify_doctor", {})
+
+    payload = result_json(result)
+    checks = {check["check"]: check for check in payload["checks"]}
+    assert payload["healthy"] is True
+    assert checks["workspace resolved"]["ok"] is True
+    assert "user default workspace w-fallback" in checks["workspace resolved"]["detail"]
+    assert checks["workspace reachable"]["ok"] is True
+    assert any(request.url.path.endswith("/workspaces/w-fallback") for request in backend.requests)
+
+
+async def test_doctor_reports_unresolved_workspace_without_guessing(
+    backend: MockBackend,
+) -> None:
+    from clockify_mcp.context import ServerConfig
+    from clockify_mcp.server import build_read_only_server
+
+    from .conftest import make_mock_client
+
+    backend.respond_by_path({"/user": {**ME, "defaultWorkspace": None, "activeWorkspace": None}})
+    config = ServerConfig(api_key="test-key", addon_token=None, workspace_id=None)
+    server = build_read_only_server(config, client=make_mock_client(backend, workspace_id=None))
+
+    async with Client(server) as client:
+        result = await client.call_tool("clockify_doctor", {})
+
+    payload = result_json(result)
+    checks = {check["check"]: check for check in payload["checks"]}
+    assert payload["healthy"] is False
+    assert checks["workspace resolved"]["ok"] is False
+    assert not any("/workspaces/" in request.url.path for request in backend.requests)
 
 
 async def test_workflows_cannot_mutate(backend: MockBackend) -> None:

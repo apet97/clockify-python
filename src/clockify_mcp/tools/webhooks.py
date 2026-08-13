@@ -1,7 +1,7 @@
 # pyright: reportUnusedFunction=false
 """Raw read tools: webhooks (5 reads)."""
 
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server import MCPServer
 
@@ -42,7 +42,7 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
         workspace_id: str | None = None,
         page: int | None = None,
         size: int | None = None,
-        statuses: str | None = None,
+        statuses: Literal["SUCCEEDED", "RETRYING", "FAILED"] | None = None,
     ) -> ReadResult:
         """List a webhook's event statuses with the latest delivery log per event."""
         return await raw_read(

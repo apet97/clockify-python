@@ -1,6 +1,5 @@
 """WriteGate: the only path from an approved preview to an ExecutionPermit."""
 
-import time
 from typing import Any
 
 from clockify._transport.auth import Credential
@@ -73,7 +72,3 @@ def is_approved(elicitation_result: Any) -> bool:
 def fingerprint_state(fields: dict[str, Any]) -> str:
     """Canonical precondition fingerprint of the minimum relevant fields."""
     return digest_of(fields)
-
-
-def now() -> float:
-    return time.monotonic()

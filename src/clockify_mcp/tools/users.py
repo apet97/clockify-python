@@ -37,10 +37,9 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
         page: int | None = None,
         page_size: int | None = None,
         memberships: str | None = None,
-        include_roles: bool | None = None,
+        include_roles: bool = False,
     ) -> ReadResult:
-        """List workspace users with filters. `include_roles` is a required query
-        parameter on the API side."""
+        """List workspace users with filters. `include_roles` defaults to false."""
         return await raw_read(
             client,
             "findWorkspaceUsers",

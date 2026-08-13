@@ -14,7 +14,7 @@ from mcp.types import ToolAnnotations
 from clockify.client import ClockifyClient
 from clockify.errors import ClockifyError
 from clockify_mcp.errors import ToolError, to_tool_error
-from clockify_mcp.result import ReadResult
+from clockify_mcp.result import ReadResult, read_result
 
 READ_ANNOTATIONS = ToolAnnotations(
     read_only_hint=True,
@@ -37,13 +37,7 @@ async def raw_read(
         response = await client.raw.call(operation_id, path=path, query=query, body=body)
     except ClockifyError as exc:
         raise to_tool_error(exc) from exc
-    return ReadResult(
-        data=response.data,
-        operation_id=response.operation_id,
-        request_id=response.request_id,
-        last_page=response.last_page,
-        warnings=warnings or [],
-    )
+    return read_result(response, response.data, warnings=warnings)
 
 
 def workspace_of(client: ClockifyClient, workspace_id: str | None) -> str:

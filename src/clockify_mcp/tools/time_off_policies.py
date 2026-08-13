@@ -26,7 +26,7 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
     @server.tool(name="clockify_time_off_policies_list", annotations=READ_ANNOTATIONS)
     async def clockify_time_off_policies_list(
         workspace_id: str | None = None,
-        page: int | None = None,
+        page: str | None = None,
         page_size: int | None = None,
         name: str | None = None,
         status: str | None = None,

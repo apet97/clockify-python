@@ -29,7 +29,7 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
         project_id: str,
         workspace_id: str | None = None,
         name: str | None = None,
-        strict_name_search: str | None = None,
+        strict_name_search: bool | None = None,
         is_active: bool | None = None,
         page: int | None = None,
         page_size: int | None = None,

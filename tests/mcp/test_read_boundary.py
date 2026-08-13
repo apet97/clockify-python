@@ -111,3 +111,70 @@ async def test_no_write_module_is_imported_by_the_read_server() -> None:
         "assert bad == [], bad"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def test_read_executor_compatibility_facade_preserves_identity() -> None:
+    from clockify._transport.executor import ReadOnlyExecutor as TransportReadOnlyExecutor
+    from clockify_mcp.read_executor import ReadOnlyExecutor as MCPReadOnlyExecutor
+
+    assert MCPReadOnlyExecutor is TransportReadOnlyExecutor
+
+
+async def test_corrected_raw_tool_schemas(server) -> None:  # type: ignore[no-untyped-def]
+    tools = {tool.name: tool.input_schema for tool in await server.list_tools()}
+
+    for name in (
+        "clockify_custom_fields_list_for_workspace",
+        "clockify_custom_fields_list_for_project",
+    ):
+        assert {"type": "array", "items": {"type": "string"}} in tools[name]["properties"][
+            "entity_type"
+        ]["anyOf"]
+    for name in (
+        "clockify_projects_list",
+        "clockify_tags_list",
+        "clockify_tasks_list",
+    ):
+        assert {"type": "boolean"} in tools[name]["properties"]["strict_name_search"]["anyOf"]
+    assert {"type": "string"} in tools["clockify_tags_list"]["properties"]["excluded_ids"]["anyOf"]
+    assert {"type": "string"} in tools["clockify_time_off_policies_list"]["properties"]["page"][
+        "anyOf"
+    ]
+    assert {"type": "string"} in tools["clockify_users_list"]["properties"]["account_statuses"][
+        "anyOf"
+    ]
+    assert tools["clockify_users_list"]["properties"]["include_roles"] == {
+        "default": False,
+        "title": "Include Roles",
+        "type": "boolean",
+    }
+    assert tools["clockify_webhooks_list_event_statuses"]["properties"]["statuses"]["anyOf"][0] == {
+        "enum": ["SUCCEEDED", "RETRYING", "FAILED"],
+        "type": "string",
+    }
+
+    for name in (
+        "clockify_entity_changes_list_created",
+        "clockify_entity_changes_list_deleted",
+        "clockify_entity_changes_list_updated",
+    ):
+        assert set(tools[name]["required"]) == {"type"}
+    assert set(tools["clockify_holidays_list_in_period"]["required"]) == {
+        "assigned_to",
+        "start",
+        "end",
+    }
+    assert set(tools["clockify_scheduling_get_project_totals"]["required"]) == {
+        "project_id",
+        "start",
+        "end",
+    }
+    assert set(tools["clockify_scheduling_get_user_capacity"]["required"]) == {
+        "user_id",
+        "start",
+        "end",
+    }
+    assert set(tools["clockify_scheduling_list_assignments"]["required"]) == {
+        "start",
+        "end",
+    }

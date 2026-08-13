@@ -2,6 +2,7 @@
 """Wave-1 write adapter (clockify_tags_create) through the full production gate."""
 
 import json as jsonlib
+from dataclasses import replace
 from typing import Any
 
 import httpx
@@ -9,6 +10,7 @@ from mcp.types import ElicitResult
 
 from clockify_mcp.context import ServerConfig
 from clockify_mcp.writes.adapters import build_approved_server
+from clockify_mcp.writes.gate import WriteGate
 from mcp import Client
 
 from ..conftest import MockBackend, make_mock_client, result_json
@@ -67,6 +69,19 @@ async def test_approved_create_dispatches_once_and_reconciles() -> None:
     assert len(backend.mutations) == 1
     sent = jsonlib.loads(backend.mutations[0].content)
     assert sent == {"name": "wave1"}
+    precondition_reads = [
+        request
+        for request in backend.requests
+        if request.method == "GET" and request.url.path.endswith("/tags")
+    ]
+    # The modern resolver can rebuild the preview. The last read is the consumed
+    # nonce's final precondition check and must still precede the POST.
+    assert len(precondition_reads) >= 2
+    assert all(request.url.params["strict-name-search"] == "true" for request in precondition_reads)
+    assert all(request.url.params["page-size"] == "1" for request in precondition_reads)
+    assert backend.requests.index(precondition_reads[-1]) < backend.requests.index(
+        backend.mutations[0]
+    )
     # The human saw the exact bound body before approving.
     assert '"name":"wave1"' in previews[0]
     assert "POST /workspaces/{workspaceId}/tags" in previews[0]
@@ -107,6 +122,89 @@ async def test_existing_name_fails_before_preview() -> None:
     assert result.is_error
     assert "already exists" in result.content[0].text
     assert asked["n"] == 0  # failed before any approval question
+    assert backend.mutations == []
+
+
+async def test_state_change_after_approval_consumes_nonce_without_dispatch() -> None:
+    backend = WriteBackend()
+    original = backend.responder
+    state_changed = False
+
+    def changing(request: httpx.Request) -> httpx.Response:
+        if state_changed and request.method == "GET" and request.url.path.endswith("/tags"):
+            return httpx.Response(
+                200,
+                json=[{"id": "t-race", "name": "race", "archived": False}],
+            )
+        return original(request)
+
+    backend.responder = changing
+    server = make_server(backend)
+
+    async def approve_after_change(context: Any, params: Any) -> ElicitResult:
+        nonlocal state_changed
+        state_changed = True
+        return ElicitResult(action="accept", content={"decision": "approve"})
+
+    async with Client(server, elicitation_callback=approve_after_change, mode="legacy") as client:
+        result = await client.call_tool("clockify_tags_create", {"name": "race"})
+
+    payload = result_json(result)
+    assert payload["state"] == "failed_before_dispatch"
+    assert payload["applied_steps"] == []
+    assert payload["failed_step"] is None
+    assert payload["next_actions"]
+    assert "state changed" in payload["warnings"][0]
+    assert backend.mutations == []
+
+
+async def test_final_precondition_read_failure_never_dispatches() -> None:
+    backend = WriteBackend()
+    original = backend.responder
+    precondition_reads = 0
+
+    def failing_second_read(request: httpx.Request) -> httpx.Response:
+        nonlocal precondition_reads
+        if request.method == "GET" and request.url.path.endswith("/tags"):
+            precondition_reads += 1
+            if precondition_reads == 2:
+                return httpx.Response(503, json={"message": "temporary"})
+        return original(request)
+
+    backend.responder = failing_second_read
+    server = make_server(backend)
+    async with Client(server, elicitation_callback=approve(), mode="legacy") as client:
+        result = await client.call_tool("clockify_tags_create", {"name": "verify"})
+
+    payload = result_json(result)
+    assert payload["state"] == "failed_before_dispatch"
+    assert payload["applied_steps"] == []
+    assert payload["failed_step"] is None
+    assert payload["next_actions"]
+    assert "no write was sent" in payload["warnings"][0]
+    assert precondition_reads == 2
+    assert backend.mutations == []
+
+
+async def test_malformed_consumed_plan_never_dispatches(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    backend = WriteBackend()
+    original_consume = WriteGate.consume
+
+    async def consume_with_malformed_plan(self, prepared):  # type: ignore[no-untyped-def]
+        permit = await original_consume(self, prepared)
+        malformed_step = replace(permit.plan.steps[0], body_json=b'{"wrong":"shape"}')
+        return replace(permit, plan=replace(permit.plan, steps=(malformed_step,)))
+
+    monkeypatch.setattr(WriteGate, "consume", consume_with_malformed_plan)
+    server = make_server(backend)
+    async with Client(server, elicitation_callback=approve(), mode="legacy") as client:
+        result = await client.call_tool("clockify_tags_create", {"name": "shape"})
+
+    payload = result_json(result)
+    assert payload["state"] == "failed_before_dispatch"
+    assert payload["applied_steps"] == []
+    assert payload["failed_step"] is None
+    assert "invalid tag request" in payload["warnings"][0]
     assert backend.mutations == []
 
 

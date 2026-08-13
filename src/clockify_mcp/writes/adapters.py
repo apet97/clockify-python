@@ -61,6 +61,28 @@ class WriteApproval(BaseModel):
     decision: Literal["approve", "reject"]
 
 
+def _approved_tag_target(plan: WritePlan) -> tuple[str, str]:
+    """Extract the final read target only from the consumed, stored plan."""
+    if len(plan.steps) != 1:
+        raise ValueError("approved tag plan must contain exactly one step")
+    step = plan.steps[0]
+    if (
+        step.operation_id != "postWorkspacesWorkspaceIdTags"
+        or len(step.path_arguments) != 1
+        or step.path_arguments[0][0] != "workspaceId"
+        or not step.path_arguments[0][1]
+        or step.query
+        or step.multipart_fields
+        or step.files
+        or step.body_json is None
+    ):
+        raise ValueError("approved tag plan has an invalid request shape")
+    body = json.loads(step.body_json)
+    if not isinstance(body, dict) or set(body) != {"name"} or not isinstance(body["name"], str):
+        raise ValueError("approved tag plan has an invalid body")
+    return step.path_arguments[0][1], body["name"]
+
+
 def make_step_sender(write_executor: HttpExecutor):  # type: ignore[no-untyped-def]
     """Adapt a WriteStep to one real dispatch through the normal transport."""
 
@@ -87,6 +109,24 @@ def register_tags_create(
 ) -> None:
     sender = make_step_sender(write_executor)
 
+    async def read_name_preconditions(
+        name: str, workspace_id: str
+    ) -> tuple[list[Any], tuple[Precondition, ...]]:
+        existing = await read_client.tags.list(
+            workspace_id=workspace_id,
+            name=name,
+            strict_name_search=True,
+            page=1,
+            page_size=1,
+        )
+        exact = [tag for tag in existing if tag.name == name]
+        return exact, (
+            Precondition(
+                f"no tag named {name!r} exists",
+                fingerprint_state({"names": sorted(tag.name or "" for tag in exact)}),
+            ),
+        )
+
     async def prepare_write(name: str, workspace_id: str | None = None) -> PreparedWrite:
         resolved = workspace_id or read_client.workspace_id
         if not resolved:
@@ -95,12 +135,9 @@ def register_tags_create(
             raise ToolError("tag name must be 1-100 characters")
         # Read-only current-state check: is the name already taken?
         try:
-            existing = await read_client.tags.list(
-                workspace_id=resolved, name=name, page=1, page_size=50
-            )
+            exact, preconditions = await read_name_preconditions(name, resolved)
         except ClockifyError as exc:
             raise to_tool_error(exc) from exc
-        exact = [t for t in existing if t.name == name]
         if exact:
             raise ToolError(f"a tag named {name!r} already exists (id {exact[0].id})")
         plan = WritePlan(
@@ -118,12 +155,7 @@ def register_tags_create(
                     body_json=canonical_json({"name": name}),
                 ),
             ),
-            preconditions=(
-                Precondition(
-                    f"no tag named {name!r} exists",
-                    fingerprint_state({"names": sorted(t.name or "" for t in exact)}),
-                ),
-            ),
+            preconditions=preconditions,
             preview_fields=(PreviewField("name", name),),
             reconciliation=ReconciliationPlan(
                 kind="direct_get",
@@ -171,6 +203,42 @@ def register_tags_create(
                 confirmation_id=confirmation,
                 operation_ids=operation_ids,
                 warnings=[str(exc)],
+            )
+        try:
+            approved_workspace_id, approved_name = _approved_tag_target(permit.plan)
+        except ValueError:
+            return WriteResult(
+                state="failed_before_dispatch",
+                tool_name="clockify_tags_create",
+                confirmation_id=confirmation,
+                operation_ids=operation_ids,
+                warnings=["approved plan has an invalid tag request; no write was sent"],
+                next_actions=["request a new preview before trying to create this tag"],
+            )
+        try:
+            _, current_preconditions = await read_name_preconditions(
+                approved_name, approved_workspace_id
+            )
+        except ClockifyError as exc:
+            return WriteResult(
+                state="failed_before_dispatch",
+                tool_name="clockify_tags_create",
+                confirmation_id=confirmation,
+                operation_ids=operation_ids,
+                warnings=[
+                    "could not verify tag state after approval; no write was sent: "
+                    f"{to_tool_error(exc)}"
+                ],
+                next_actions=["request a new preview before trying to create this tag"],
+            )
+        if current_preconditions != permit.plan.preconditions:
+            return WriteResult(
+                state="failed_before_dispatch",
+                tool_name="clockify_tags_create",
+                confirmation_id=confirmation,
+                operation_ids=operation_ids,
+                warnings=["tag state changed after approval; no write was sent"],
+                next_actions=["request a new preview before trying to create this tag"],
             )
         executor = ControlledWriteExecutor(permit, sender)
         step = permit.plan.steps[0]

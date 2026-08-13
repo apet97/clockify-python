@@ -36,7 +36,7 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
     async def clockify_projects_list(
         workspace_id: str | None = None,
         name: str | None = None,
-        strict_name_search: str | None = None,
+        strict_name_search: bool | None = None,
         archived: bool | None = None,
         billable: bool | None = None,
         clients: list[str] | None = None,

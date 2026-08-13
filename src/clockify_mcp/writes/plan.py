@@ -196,7 +196,3 @@ def render_preview(prepared: PreparedWrite) -> str:
     lines.append(f"Valid for: {validity_seconds} seconds")
     lines.append("Decision: approve or reject")
     return "\n".join(lines)
-
-
-def canonical_body(body: dict[str, Any] | list[Any] | None) -> bytes | None:
-    return canonical_json(body) if body is not None else None

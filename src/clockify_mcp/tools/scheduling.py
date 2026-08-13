@@ -29,9 +29,9 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
     @server.tool(name="clockify_scheduling_get_project_totals", annotations=READ_ANNOTATIONS)
     async def clockify_scheduling_get_project_totals(
         project_id: str,
+        start: str,
+        end: str,
         workspace_id: str | None = None,
-        start: str | None = None,
-        end: str | None = None,
     ) -> ReadResult:
         """Get scheduled-assignment totals for one project. `start` and `end` are
         required by live Clockify; the request 400s without them."""
@@ -45,11 +45,11 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
     @server.tool(name="clockify_scheduling_get_user_capacity", annotations=READ_ANNOTATIONS)
     async def clockify_scheduling_get_user_capacity(
         user_id: str,
+        start: str,
+        end: str,
         workspace_id: str | None = None,
         page: int | None = None,
         page_size: int | None = None,
-        start: str | None = None,
-        end: str | None = None,
     ) -> ReadResult:
         """Get one user's capacity totals. `start` and `end` (yyyy-MM-ddThh:mm:ssZ)
         are required; paginated envelope with item array totalHoursPerDay."""
@@ -62,10 +62,10 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
 
     @server.tool(name="clockify_scheduling_list_assignments", annotations=READ_ANNOTATIONS)
     async def clockify_scheduling_list_assignments(
+        start: str,
+        end: str,
         workspace_id: str | None = None,
         name: str | None = None,
-        start: str | None = None,
-        end: str | None = None,
         sort_column: str | None = None,
         sort_order: str | None = None,
         page: int | None = None,

@@ -14,7 +14,7 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
         workspace_id: str | None = None,
         name: str | None = None,
         status: str | None = None,
-        entity_type: str | None = None,
+        entity_type: list[str] | None = None,
         page: int | None = None,
         page_size: int | None = None,
     ) -> ReadResult:
@@ -38,7 +38,7 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
         project_id: str,
         workspace_id: str | None = None,
         status: str | None = None,
-        entity_type: str | None = None,
+        entity_type: list[str] | None = None,
         page: int | None = None,
         page_size: int | None = None,
     ) -> ReadResult:

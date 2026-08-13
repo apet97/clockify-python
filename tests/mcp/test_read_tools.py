@@ -1,6 +1,14 @@
 # pyright: reportMissingParameterType=false, reportUnknownParameterType=false, reportAttributeAccessIssue=false, reportUnusedImport=false, reportUnknownArgumentType=false, reportUnknownMemberType=false
 """In-memory client calls through representative raw read tools."""
 
+from typing import cast
+
+import httpx
+
+from clockify.client import ClockifyClient
+from clockify.models import TagDto
+from clockify.response import ClockifyResponse
+from clockify_mcp.tools._shared import raw_read
 from mcp import Client
 
 from .conftest import MockBackend, result_json
@@ -86,4 +94,83 @@ async def test_missing_workspace_produces_setup_error(backend: MockBackend) -> N
         result = await client.call_tool("clockify_tags_list", {})
     assert result.is_error
     assert "workspace_id" in result.content[0].text
+    assert backend.requests == []
+
+
+async def test_raw_read_uses_uniform_result_conversion() -> None:
+    class FakeRaw:
+        async def call(self, operation_id, **kwargs):  # type: ignore[no-untyped-def]
+            return ClockifyResponse(
+                data=TagDto.model_validate(
+                    {"id": "t1", "name": "billing", "workspaceId": "w-test", "archived": False}
+                ),
+                status_code=200,
+                headers=httpx.Headers({"Last-Page": "false"}),
+                request_id="request-1",
+                operation_id=operation_id,
+            )
+
+    class FakeClient:
+        raw = FakeRaw()
+
+    result = await raw_read(
+        cast(ClockifyClient, FakeClient()),
+        "getWorkspacesWorkspaceIdTags",
+        warnings=["bounded"],
+    )
+
+    assert result.data == {
+        "archived": False,
+        "id": "t1",
+        "name": "billing",
+        "workspaceId": "w-test",
+    }
+    assert result.request_id == "request-1"
+    assert result.last_page is False
+    assert result.warnings == ["bounded"]
+
+
+async def test_corrected_query_contract_reaches_the_wire(server, backend: MockBackend) -> None:  # type: ignore[no-untyped-def]
+    backend.respond_json([])
+    async with Client(server) as client:
+        await client.call_tool(
+            "clockify_custom_fields_list_for_workspace",
+            {"entity_type": ["PROJECT", "TIME_ENTRY"]},
+        )
+        await client.call_tool(
+            "clockify_tags_list",
+            {"strict_name_search": True, "excluded_ids": "t1"},
+        )
+        await client.call_tool("clockify_users_list", {})
+        await client.call_tool(
+            "clockify_webhooks_list_event_statuses",
+            {"webhook_id": "wh1", "statuses": "FAILED"},
+        )
+        await client.call_tool("clockify_time_off_policies_list", {"page": "0"})
+
+    custom_fields, tags, users, webhooks, policies = backend.requests
+    assert custom_fields.url.params.get_list("entity-type") == ["PROJECT", "TIME_ENTRY"]
+    assert tags.url.params["strict-name-search"] == "true"
+    assert tags.url.params["excluded-ids"] == "t1"
+    assert users.url.params["include-roles"] == "false"
+    assert webhooks.url.params["statuses"] == "FAILED"
+    assert policies.url.params["page"] == "0"
+
+
+async def test_corrected_query_schema_rejects_invalid_input_before_network(
+    server, backend: MockBackend
+) -> None:  # type: ignore[no-untyped-def]
+    async with Client(server) as client:
+        missing_type = await client.call_tool("clockify_entity_changes_list_created", {})
+        bad_status = await client.call_tool(
+            "clockify_webhooks_list_event_statuses",
+            {"webhook_id": "wh1", "statuses": "UNKNOWN"},
+        )
+        missing_range = await client.call_tool(
+            "clockify_scheduling_get_project_totals", {"project_id": "p1"}
+        )
+
+    assert missing_type.is_error
+    assert bad_status.is_error
+    assert missing_range.is_error
     assert backend.requests == []

@@ -13,8 +13,8 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
     async def clockify_tags_list(
         workspace_id: str | None = None,
         name: str | None = None,
-        strict_name_search: str | None = None,
-        excluded_ids: list[str] | None = None,
+        strict_name_search: bool | None = None,
+        excluded_ids: str | None = None,
         archived: bool | None = None,
         sort_column: str | None = None,
         sort_order: str | None = None,

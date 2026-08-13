@@ -6,10 +6,11 @@ from dataclasses import dataclass
 import httpx
 
 from clockify._transport.auth import Credential
-from clockify._transport.executor import HttpExecutor, ReadOnlyExecutor
+from clockify._transport.executor import HttpExecutor
 from clockify.client import ClockifyClient
 from clockify.config import DEFAULT_TIMEOUT
 from clockify.errors import ClockifyConfigurationError
+from clockify_mcp.read_executor import ReadOnlyExecutor
 
 
 @dataclass(frozen=True, slots=True)

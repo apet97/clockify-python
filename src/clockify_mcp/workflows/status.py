@@ -5,12 +5,15 @@ from typing import Any
 from clockify.errors import ClockifyError
 from clockify_mcp.errors import to_tool_error
 from clockify_mcp.read_capability import WorkflowReadClient
+from clockify_mcp.workflows._workspace import resolve_workspace_id
 
 
 async def status(client: WorkflowReadClient) -> dict[str, Any]:
     try:
         me = await client.users.me()
-        workspace_id = client.workspace_id or me.default_workspace or me.active_workspace
+        workspace_id, workspace_source = resolve_workspace_id(
+            client.workspace_id, me.default_workspace, me.active_workspace
+        )
         running: list[dict[str, Any]] = []
         workspace: dict[str, Any] | None = None
         if workspace_id:
@@ -37,6 +40,6 @@ async def status(client: WorkflowReadClient) -> dict[str, Any]:
     return {
         "user": {"id": me.id, "name": me.name, "email": me.email},
         "workspace": workspace,
-        "workspace_source": "configured" if client.workspace_id else "user default",
+        "workspace_source": workspace_source,
         "running_entries": running,
     }

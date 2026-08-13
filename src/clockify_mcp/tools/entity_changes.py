@@ -18,8 +18,8 @@ from clockify_mcp.tools._shared import READ_ANNOTATIONS, raw_read, workspace_of
 def register(server: MCPServer, client: ClockifyClient) -> None:
     @server.tool(name="clockify_entity_changes_list_created", annotations=READ_ANNOTATIONS)
     async def clockify_entity_changes_list_created(
+        type: list[str],
         workspace_id: str | None = None,
-        type: list[str] | None = None,
         start: str | None = None,
         end: str | None = None,
         page: str | None = None,
@@ -36,8 +36,8 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
 
     @server.tool(name="clockify_entity_changes_list_deleted", annotations=READ_ANNOTATIONS)
     async def clockify_entity_changes_list_deleted(
+        type: list[str],
         workspace_id: str | None = None,
-        type: list[str] | None = None,
         start: str | None = None,
         end: str | None = None,
         page: str | None = None,
@@ -54,8 +54,8 @@ def register(server: MCPServer, client: ClockifyClient) -> None:
 
     @server.tool(name="clockify_entity_changes_list_updated", annotations=READ_ANNOTATIONS)
     async def clockify_entity_changes_list_updated(
+        type: list[str],
         workspace_id: str | None = None,
-        type: list[str] | None = None,
         start: str | None = None,
         end: str | None = None,
         page: str | None = None,

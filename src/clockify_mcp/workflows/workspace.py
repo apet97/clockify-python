@@ -49,5 +49,5 @@ async def workspace_overview(
         if settings is not None
         else None,
         "note": f"counts sample the first page (size {_SAMPLE_PAGE_SIZE}); "
-        "exact=false means more exist",
+        "exact=false means more may exist",
     }

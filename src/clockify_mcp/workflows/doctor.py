@@ -8,7 +8,9 @@ from clockify.errors import (
     ClockifyError,
 )
 from clockify_mcp.context import ServerConfig
+from clockify_mcp.errors import to_tool_error
 from clockify_mcp.read_capability import WorkflowReadClient
+from clockify_mcp.workflows._workspace import resolve_workspace_id
 
 
 async def doctor(client: WorkflowReadClient, config: ServerConfig) -> dict[str, Any]:
@@ -28,27 +30,31 @@ async def doctor(client: WorkflowReadClient, config: ServerConfig) -> dict[str, 
         if credential_kind != "missing" and not both
         else "set exactly one of CLOCKIFY_API_KEY or CLOCKIFY_ADDON_TOKEN",
     )
-    record(
-        "workspace configured",
-        bool(config.workspace_id),
-        "CLOCKIFY_WORKSPACE_ID set"
-        if config.workspace_id
-        else "not set; tools fall back to the user's default workspace",
-    )
-
-    user_id: str | None = None
+    me = None
     try:
         me = await client.users.me()
-        user_id = me.id
         record("credential works", True, f"authenticated as user {me.id}")
     except ClockifyAuthenticationError:
         record("credential works", False, "Clockify rejected the credential (401)")
     except ClockifyError as exc:
-        record("credential works", False, f"could not reach Clockify: {exc}")
+        record("credential works", False, str(to_tool_error(exc)))
 
-    if user_id and config.workspace_id:
+    workspace_id, workspace_source = resolve_workspace_id(
+        config.workspace_id,
+        me.default_workspace if me else None,
+        me.active_workspace if me else None,
+    )
+    record(
+        "workspace resolved",
+        workspace_id is not None,
+        f"using {workspace_source} workspace {workspace_id}"
+        if workspace_id
+        else "set CLOCKIFY_WORKSPACE_ID or select a default or active workspace",
+    )
+
+    if me and workspace_id:
         try:
-            workspace = await client.workspaces.get(workspace_id=config.workspace_id)
+            workspace = await client.workspaces.get(workspace_id=workspace_id)
             record(
                 "workspace reachable",
                 True,
@@ -61,7 +67,7 @@ async def doctor(client: WorkflowReadClient, config: ServerConfig) -> dict[str, 
                 f"HTTP {exc.status_code}: the credential cannot access this workspace",
             )
         except ClockifyError as exc:
-            record("workspace reachable", False, str(exc))
+            record("workspace reachable", False, str(to_tool_error(exc)))
 
     healthy = all(c["ok"] for c in checks)
     return {"healthy": healthy, "checks": checks}
