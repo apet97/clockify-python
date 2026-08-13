@@ -18,7 +18,10 @@ from clockify._transport.executor import HttpExecutor
 from clockify.client import ClockifyClient
 from clockify.config import DEFAULT_TIMEOUT
 from clockify_mcp.context import ServerConfig, build_read_only_client
+from clockify_mcp.prompts import register_prompts
+from clockify_mcp.resources import register_resources
 from clockify_mcp.tools import register_read_tools
+from clockify_mcp.tools.orientation import register_orientation
 from clockify_mcp.tools.workflows import register_workflows
 from clockify_mcp.writes.gate import WriteGate
 from clockify_mcp.writes.principal import AUDIENCE, new_process_secret
@@ -65,6 +68,9 @@ def build_full_server(
     )
     register_read_tools(server, read_client)
     register_workflows(server, read_client, resolved_config)
+    register_orientation(server)
+    register_resources(server)
+    register_prompts(server)
     deps = WriteDeps(read_client=read_client, gate=gate, sender=make_step_sender(write_executor))
     register_write_tools(server, deps)
     return server

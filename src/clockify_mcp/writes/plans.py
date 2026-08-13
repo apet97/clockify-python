@@ -43,19 +43,31 @@ def build_step(
     *,
     path_args: Mapping[str, str],
     body: Any = None,
-    query: Mapping[str, str] | None = None,
+    query: Mapping[str, Any] | None = None,
 ) -> WriteStep:
-    """Compile one exact wire step; body is canonicalized at bind time."""
+    """Compile one exact wire step; body is canonicalized at bind time.
+
+    Query keys are the operation's Python parameter names (the transport maps
+    them to wire names); list values become repeated pairs so exploded
+    parameters survive the round trip through the stored step.
+    """
     operation = BY_ID[operation_id]
     missing = [name for name in operation.path_parameters if not path_args.get(name)]
     if missing:
         raise ValueError(f"{operation_id} requires path arguments: {', '.join(missing)}")
     if isinstance(body, BaseModel):
         body = body.model_dump(by_alias=True, exclude_none=True)
+    pairs: list[tuple[str, str]] = []
+    for key in sorted(query or {}):
+        value = (query or {})[key]
+        if isinstance(value, (list, tuple)):
+            pairs.extend((key, str(item)) for item in value)
+        elif value is not None:
+            pairs.append((key, str(value)))
     return WriteStep(
         operation_id=operation_id,
         path_arguments=tuple((name, path_args[name]) for name in operation.path_parameters),
-        query=tuple(sorted((query or {}).items())),
+        query=tuple(pairs),
         body_json=canonical_json(body) if body is not None else None,
     )
 
@@ -130,8 +142,8 @@ def make_revalidator(
                     body = json.loads(step.body_json)
                 except ValueError as exc:
                     raise ValueError(f"step {step.operation_id} body is not JSON") from exc
-                if not isinstance(body, dict):
-                    raise ValueError(f"step {step.operation_id} body must be an object")
+                if not isinstance(body, (dict, list)):
+                    raise ValueError(f"step {step.operation_id} body must be an object or array")
                 model = (body_models or {}).get(step.operation_id)
                 if model is not None:
                     try:

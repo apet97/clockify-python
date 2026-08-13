@@ -257,13 +257,15 @@ async def test_write_tool_absent_from_read_only_server() -> None:
     assert "clockify_tags_create" not in tools
 
 
-async def test_approved_server_advertises_exactly_one_write() -> None:
+async def test_full_server_advertises_every_classified_write() -> None:
+    from clockify_mcp.risk import RISK_BY_TOOL, Risk
+
     backend = WriteBackend()
     server = make_server(backend)
     tools = await server.list_tools()
-    writes = [t for t in tools if t.annotations and t.annotations.read_only_hint is False]
-    assert [t.name for t in writes] == ["clockify_tags_create"]
-    assert len(tools) == 66  # 60 raw reads + 5 workflows + 1 write
+    writes = {t.name for t in tools if t.annotations and t.annotations.read_only_hint is False}
+    assert writes == {name for name, risk in RISK_BY_TOOL.items() if risk is not Risk.READ}
+    assert len(tools) == len(RISK_BY_TOOL)
 
 
 async def test_replay_cannot_double_create() -> None:

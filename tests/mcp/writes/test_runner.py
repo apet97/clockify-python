@@ -92,7 +92,7 @@ async def prepare(deps: WriteDeps):  # type: ignore[no-untyped-def]
 async def test_multi_step_dispatches_in_order() -> None:
     deps, sender = make_deps(["ok", "ok"])
     result = await run_guarded_write(spec(), deps, prepared=await prepare(deps), approval=APPROVE)
-    assert result.state == "succeeded_unreconciled"
+    assert result.state == "succeeded"
     assert [step.operation_id for step in sender.sent] == ["updateProject", "deleteProject"]
     assert [applied.index for applied in result.applied_steps] == [0, 1]
     assert result.request_ids == ["req-1", "req-2"]
@@ -142,7 +142,7 @@ async def test_replay_after_consume_fails_closed() -> None:
     deps, sender = make_deps(["ok", "ok"])
     prepared = await prepare(deps)
     first = await run_guarded_write(spec(), deps, prepared=prepared, approval=APPROVE)
-    assert first.state == "succeeded_unreconciled"
+    assert first.state == "succeeded"
     replay = await run_guarded_write(spec(), deps, prepared=prepared, approval=APPROVE)
     assert replay.state == "failed_before_dispatch"
     assert len(sender.sent) == 2  # no further dispatch
@@ -175,7 +175,7 @@ async def test_routine_write_executes_without_gate() -> None:
         ),
     )
     result = await run_routine_write("clockify_start_work", plan, deps)
-    assert result.state == "succeeded_unreconciled"
+    assert result.state == "succeeded"
     assert result.confirmation_id == ""
     assert len(sender.sent) == 1
 

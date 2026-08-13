@@ -32,7 +32,7 @@ from clockify_mcp.writes.plan import (
     WriteStep,
     render_preview,
 )
-from clockify_mcp.writes.state import AppliedStep, FailedStep, WriteResult
+from clockify_mcp.writes.state import AppliedStep, FailedStep, WriteResult, WriteState
 
 
 class WriteApproval(BaseModel):
@@ -74,10 +74,17 @@ def make_step_sender(write_executor: HttpExecutor) -> StepSender:
     async def send(step: WriteStep) -> tuple[int, str | None, Any]:
         operation = BY_ID[step.operation_id]
         body = json.loads(step.body_json) if step.body_json is not None else None
+        query: dict[str, Any] = {}
+        for key, value in step.query:  # repeated pairs become lists (explode)
+            if key in query:
+                existing = query[key]
+                query[key] = [*existing, value] if isinstance(existing, list) else [existing, value]
+            else:
+                query[key] = value
         response = await write_executor.execute(
             operation,
             path_args=dict(step.path_arguments),
-            query=dict(step.query) or None,
+            query=query or None,
             body=body,
         )
         return response.status_code, response.request_id, response.data
@@ -224,13 +231,14 @@ async def run_guarded_write(
     if failure is not None:
         return failure
     data: Any = outcomes[-1].data if outcomes else None
-    reconciled = False
+    state: WriteState = "succeeded"  # no reconciliation planned: response is authoritative
     if spec.reconcile is not None:
         reconciled, read_back = await spec.reconcile(permit.plan, outcomes)
+        state = "reconciled" if reconciled else "succeeded_unreconciled"
         if read_back is not None:
             data = read_back
     return WriteResult(
-        state="reconciled" if reconciled else "succeeded_unreconciled",
+        state=state,
         tool_name=spec.tool_name,
         confirmation_id=confirmation,
         operation_ids=operation_ids,
@@ -263,13 +271,14 @@ async def run_routine_write(
     if failure is not None:
         return failure
     data: Any = outcomes[-1].data if outcomes else None
-    reconciled = False
+    state: WriteState = "succeeded"
     if reconcile is not None:
         reconciled, read_back = await reconcile(plan, outcomes)
+        state = "reconciled" if reconciled else "succeeded_unreconciled"
         if read_back is not None:
             data = read_back
     return WriteResult(
-        state="reconciled" if reconciled else "succeeded_unreconciled",
+        state=state,
         tool_name=tool_name,
         confirmation_id="",
         operation_ids=operation_ids,

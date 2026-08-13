@@ -25,6 +25,7 @@ from clockify_mcp.writes.runner import (
     run_guarded_write,
 )
 from clockify_mcp.writes.state import WriteResult
+from clockify_mcp.writes.tools._shared import GuardedOp, tool_annotations
 
 _CREATE_OP = "postWorkspacesWorkspaceIdTags"
 
@@ -129,3 +130,81 @@ def register(server: MCPServer, deps: WriteDeps) -> None:
     ) -> WriteResult:
         """Create a workspace tag after explicit user approval of the exact request."""
         return await run_guarded_write(create_spec, deps, prepared=prepared, approval=approval)
+
+    update = GuardedOp(
+        deps,
+        tool_name="clockify_tags_update",
+        title="Update tag",
+        operation_id="putWorkspacesWorkspaceIdTagsTagId",
+    )
+
+    async def prepare_update(
+        tag_id: str,
+        name: str | None = None,
+        archived: bool | None = None,
+        workspace_id: str | None = None,
+    ) -> PreparedWrite:
+        body = {
+            key: value
+            for key, value in (("name", name), ("archived", archived))
+            if value is not None
+        }
+        if not body:
+            raise ToolError("pass name and/or archived to update the tag")
+        return await update.prepare(
+            arguments={
+                "tag_id": tag_id,
+                "name": name,
+                "archived": archived,
+                "workspace_id": workspace_id,
+            },
+            path_args={"workspaceId": update.workspace(workspace_id), "tagId": tag_id},
+            body=body,
+        )
+
+    def ask_update(
+        prepared: Annotated[PreparedWrite, Resolve(prepare_update)],
+    ) -> Elicit[WriteApproval]:
+        return elicit_approval(prepared)
+
+    @server.tool(name="clockify_tags_update", annotations=tool_annotations("clockify_tags_update"))
+    async def clockify_tags_update(
+        tag_id: str,
+        name: str | None = None,
+        archived: bool | None = None,
+        workspace_id: str | None = None,
+        *,
+        prepared: Annotated[PreparedWrite, Resolve(prepare_update)],
+        approval: Annotated[ElicitationResult[WriteApproval], Resolve(ask_update)],
+    ) -> WriteResult:
+        """Update a tag's name and/or archived flag (PUT replacement)."""
+        return await update.run(prepared, approval)
+
+    delete = GuardedOp(
+        deps,
+        tool_name="clockify_tags_delete",
+        title="Delete tag",
+        operation_id="deleteWorkspacesWorkspaceIdTagsTagId",
+    )
+
+    async def prepare_delete(tag_id: str, workspace_id: str | None = None) -> PreparedWrite:
+        return await delete.prepare(
+            arguments={"tag_id": tag_id, "workspace_id": workspace_id},
+            path_args={"workspaceId": delete.workspace(workspace_id), "tagId": tag_id},
+        )
+
+    def ask_delete(
+        prepared: Annotated[PreparedWrite, Resolve(prepare_delete)],
+    ) -> Elicit[WriteApproval]:
+        return elicit_approval(prepared)
+
+    @server.tool(name="clockify_tags_delete", annotations=tool_annotations("clockify_tags_delete"))
+    async def clockify_tags_delete(
+        tag_id: str,
+        workspace_id: str | None = None,
+        *,
+        prepared: Annotated[PreparedWrite, Resolve(prepare_delete)],
+        approval: Annotated[ElicitationResult[WriteApproval], Resolve(ask_delete)],
+    ) -> WriteResult:
+        """Delete a tag by ID. NOT reversible; the name stays reserved."""
+        return await delete.run(prepared, approval)
