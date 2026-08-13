@@ -17,10 +17,12 @@
 - Python 3.11, 3.12, 3.13, and 3.14 are supported.
 - The SDK has 168 operations on 29 resources.
 - The SDK has 168 explicit public async methods.
-- The default MCP server has 60 raw read tools.
-- The default MCP server has five read workflows.
-- The default MCP server has 65 tools in total.
-- The default MCP server registers zero writes.
+- The default MCP server is the full server: 186 tools.
+- The full server has 60 raw read tools and 104 raw write tools.
+- The full server has 18 workflows and 4 orientation tools.
+- `CLOCKIFY_MCP_READ_ONLY=true` serves the 65-tool read-only build.
+- Every guarded write requires sealed user approval of the exact request.
+- stdio is the default transport; `--http` serves Streamable HTTP.
 - The project is independent and unofficial.
 - Do not imply endorsement by CAKE.com or Clockify.
 
@@ -135,55 +137,64 @@
 
 ## Default MCP server
 
-- Build the default server with `build_read_only_server`.
-- Building the server must not call Clockify.
-- Use stdio as the default transport.
-- Keep stdout protocol-only.
+- Build the default server with `build_full_server`.
+- Keep `build_read_only_server` intact for the read-only flag and hosted use.
+- Building either server must not call Clockify.
+- Use stdio as the default transport; support `--http` (stateful sessions).
+- Keep stdout protocol-only in stdio mode.
 - Send diagnostics to stderr.
-- Register read tools explicitly by domain.
-- Register exactly five workflows.
-- Route every raw tool through `ReadOnlyExecutor`.
-- Give workflows only the restricted read capability.
-- Do not import `clockify_mcp.writes` from the read server.
+- Register tools explicitly by domain; no runtime generation.
+- Route every raw read tool through `ReadOnlyExecutor`.
+- Give read workflows only the restricted read capability.
+- `clockify_mcp.server` must never import `clockify_mcp.writes`.
+- Keep `RISK_BY_TOOL` covering the registered surface exactly.
 - Do not use annotations as enforcement.
 - Reject PDF and XLSX shared-report formats before network access.
-- Keep binary-only reads out of the MCP surface.
+- Keep binary-only reads and file uploads out of the MCP surface.
 - Preserve tool names unless a versioned compatibility change is approved.
+
+## Write tiers
+
+- `routine_write` executes directly: personal time-entry tools and the
+  daily-tracking workflows. Single attempt, never retried.
+- `business_write`, `external_side_effect`, `privileged`, and `destructive`
+  are guarded: deterministic preview, model-invisible sealed approval
+  (`RequestStateSecurity` + MRTR/elicitation), atomic single-use nonce,
+  byte-exact dispatch of the stored plan, no automatic retry.
+- Argument or state drift after approval refuses the write.
+- A host without approval support cannot execute guarded writes (fail closed).
+- Webhook tools validate URLs offline (SSRF guard) and redact `authToken`.
+- `clockify_demo_cleanup` deletes only `DEMO-`/`sdk-demo-` prefixed entities.
 
 ## MCP workflows
 
-- Keep `clockify_status` read-only.
-- Keep `clockify_workspace_overview` read-only.
-- Keep `clockify_review_day` read-only.
-- Keep `clockify_review_week` read-only.
-- Keep `clockify_doctor` read-only.
-- Use only the workflow read capability.
+- Read workflows (`clockify_status`, `clockify_workspace_overview`,
+  `clockify_review_day`, `clockify_review_week`, `clockify_doctor`) use only
+  the workflow read capability.
+- Routine write workflows dispatch through the shared routine runner.
+- Guarded write workflows compile ONE plan and pass the sealed gate.
 - Do not pass the full SDK client to workflow business logic.
-- Require workspace context only when the workflow needs it.
-- Convert SDK errors to bounded MCP tool errors.
-- Test each workflow through the read boundary.
+- Resolve names to ids; ambiguity returns a clarification receipt, never a guess.
+- Convert SDK errors to bounded receipts with stable error codes.
+- Test each workflow against a mock backend, happy path plus one boundary.
 
-## Dormant MCP writes
+## Write gate invariants
 
-- Dormant write code is not a public capability.
-- Do not register a write in the default server.
-- Do not claim a write is certified from offline tests alone.
-- Follow `docs/port/MCP_WRITE_SAFETY_PLAN.md` for any write proposal.
-- Require exact plan binding.
-- Require deterministic human-readable previews.
-- Require single-use atomic nonce consumption.
-- Require bounded records and tombstones.
-- Require final controlled execution.
-- Require reconciliation for ambiguous outcomes.
-- Require independent review.
-- Require approval-UI evidence in two intended hosts.
+- `docs/port/MCP_WRITE_SAFETY_PLAN.md` describes the shipped mechanism.
+- Require exact plan binding (canonical arguments and wire bytes).
+- Require deterministic human-readable previews of the exact bound request.
+- Require single-use atomic nonce consumption with tombstoned replays.
+- Require consumed-plan revalidation before dispatch.
+- Require final controlled execution of the stored plan only.
+- Treat ambiguous outcomes as `outcome_unknown`; never retry a write.
+- Report multi-step failures as `partial_failure` with applied steps.
 - Keep write experiments limited to verified sacrificial workspaces.
 
 ## Documentation policy
 
 - Keep repository Markdown product-facing or actively operational.
 - Keep installation text aligned with public PyPI status.
-- Lead with the read-only SDK and MCP experience.
+- Lead with the full SDK and the guarded MCP experience.
 - Separate direct SDK writes from MCP behavior.
 - Mark mutating examples as sacrificial-workspace examples.
 - Remove completed checklists and campaign receipts.

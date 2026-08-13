@@ -1,6 +1,9 @@
 # Clockify Python Operation Port Manifest
 
-**Status:** authoritative implementation-planning artifact; no repository implementation is included.
+**Status:** authoritative for endpoint mappings. The per-operation MCP
+`Eligibility:` stamps (`WRITE-DEFERRED` and similar) are historical: since
+0.2.0 the full server registers 104 write tools through the sealed gate
+described in `MCP_WRITE_SAFETY_PLAN.md`.
 
 | Source | Value |
 |---|---|
@@ -24732,4 +24735,4 @@ type: object
 - Exactly 49 non-mutating operations use GET and 13 use POST.
 - Exactly 60 raw read operations are eligible for MCP registration; two binary-only reads are SDK-only.
 - Every operation records path/query/body/response information from the corrected OpenAPI and every transitive reachable component-schema root is present in the appendix.
-- Every MCP write remains deferred by this manifest; eligibility is not permission to ship.
+- Historical: writes were deferred by this manifest until 0.2.0 shipped them through the sealed gate.
