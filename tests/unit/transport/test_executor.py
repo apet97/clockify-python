@@ -3,6 +3,7 @@
 import asyncio
 import json
 from collections.abc import Callable, Coroutine
+from dataclasses import replace
 from typing import Any
 
 import httpx
@@ -32,6 +33,8 @@ from clockify.operations.model import (
     ResponseKind,
     Service,
 )
+from clockify.operations.registry import BY_ID
+from clockify.operations.time_entries import TIME_ENTRIES_DELETE_ALL_FOR_USER
 from clockify.response import BinaryResponse, TextResponse
 from clockify_mcp.errors import to_tool_error
 
@@ -112,6 +115,16 @@ MULTIPART_WRITE = Operation(
 )
 
 
+@pytest.fixture(autouse=True)
+def register_test_operations(monkeypatch: pytest.MonkeyPatch) -> None:
+    for operation in (GET_READ, POST_READ, JSON_WRITE, GET_WRITE_TRAP, MULTIPART_WRITE):
+        monkeypatch.setitem(BY_ID, operation.operation_id, operation)
+
+
+async def noop_request_hook(request: httpx.Request) -> None:
+    return None
+
+
 def make_executor(
     handler: "Callable[[httpx.Request], httpx.Response] | Callable[[httpx.Request], Coroutine[Any, Any, httpx.Response]]",
     *,
@@ -166,6 +179,25 @@ class TestRouting:
         executor = make_executor(handler)
         await executor.execute(GET_READ, path_args={"workspaceId": "a/b c"})
         assert "/workspaces/a%2Fb%20c/things" in str(seen[0].url)
+
+    async def test_effective_url_and_query_match_the_compiled_request(self) -> None:
+        seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(200, json=[])
+
+        executor = make_executor(handler)
+        compiled = executor.compile(
+            GET_READ,
+            path_args={"workspaceId": "w"},
+            query={"tags": ["a", "b"], "page_size": 25},
+        )
+        await executor._dispatch_compiled(  # pyright: ignore[reportPrivateUsage]
+            GET_READ, compiled
+        )
+        expected_url = httpx.URL(compiled.url).copy_merge_params(compiled.params)
+        assert seen[0].url == expected_url
 
     async def test_missing_path_arg_fails_before_network(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
@@ -324,6 +356,54 @@ class TestHeaders:
         assert seen[0].headers["Authorization"] == "caller-scheme caller-value"
         assert seen[0].headers["X-Trace"] == "trace-1"
 
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            {"Host": "alternate.example.com"},
+            {"X-Api-Key": "client-default-key"},
+            {"X-Addon-Token": "client-default-token"},
+        ],
+    )
+    async def test_protected_client_default_header_is_rejected_before_network(
+        self, headers: dict[str, str]
+    ) -> None:
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            return httpx.Response(200, json=[])
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler), headers=headers)
+        executor = HttpExecutor(client=client, credential=Credential(api_key="configured-key"))
+        with pytest.raises(ClockifyConfigurationError, match="protected header"):
+            await executor.execute(GET_READ, path_args={"workspaceId": "w"})
+        assert calls == 0
+
+    @pytest.mark.parametrize(
+        "client_options",
+        [
+            {"params": {"injected": "true"}},
+            {"auth": ("user", "password")},
+            {"event_hooks": {"request": [noop_request_hook]}},
+        ],
+    )
+    async def test_unsafe_client_default_is_rejected_before_network(
+        self, client_options: dict[str, Any]
+    ) -> None:
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            return httpx.Response(200, json=[])
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler), **client_options)
+        executor = HttpExecutor(client=client, credential=Credential(api_key="configured-key"))
+        with pytest.raises(ClockifyConfigurationError, match="injected HTTP client"):
+            await executor.execute(GET_READ, path_args={"workspaceId": "w"})
+        assert calls == 0
+
 
 class TestQuerySerialization:
     async def test_exact_wire_names_and_styles(self) -> None:
@@ -372,6 +452,23 @@ class TestQuerySerialization:
         executor = make_executor(handler)
         with pytest.raises(ClockifyConfigurationError, match="unknown query parameters"):
             await executor.execute(GET_READ, path_args={"workspaceId": "w"}, query={"nope": 1})
+
+    async def test_empty_required_collection_blocks_destructive_request(self) -> None:
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            return httpx.Response(200, json=[])
+
+        executor = make_executor(handler)
+        with pytest.raises(ClockifyConfigurationError, match="must not be empty"):
+            await executor.execute(
+                TIME_ENTRIES_DELETE_ALL_FOR_USER,
+                path_args={"workspaceId": "w", "userId": "u"},
+                query={"time_entry_ids": []},
+            )
+        assert calls == 0
 
 
 class TestBodies:
@@ -437,7 +534,7 @@ class TestResponses:
         result = await executor.execute(GET_READ, path_args={"workspaceId": "w"})
         assert result.data is None
 
-    async def test_bytes_response(self) -> None:
+    async def test_bytes_response(self, monkeypatch: pytest.MonkeyPatch) -> None:
         op = Operation(
             operation_id="testBytes",
             resource="tests",
@@ -448,6 +545,7 @@ class TestResponses:
             path_parameters=("workspaceId",),
             response_kind=ResponseKind.BYTES,
         )
+        monkeypatch.setitem(BY_ID, op.operation_id, op)
         executor = make_executor(
             lambda request: httpx.Response(
                 200,
@@ -463,7 +561,7 @@ class TestResponses:
         assert result.data.content == b"\x00\xffbinary"
         assert result.data.filename == "receipt.pdf"
 
-    async def test_text_response(self) -> None:
+    async def test_text_response(self, monkeypatch: pytest.MonkeyPatch) -> None:
         op = Operation(
             operation_id="testText",
             resource="tests",
@@ -474,6 +572,7 @@ class TestResponses:
             path_parameters=("workspaceId",),
             response_kind=ResponseKind.TEXT,
         )
+        monkeypatch.setitem(BY_ID, op.operation_id, op)
         executor = make_executor(
             lambda request: httpx.Response(
                 200, content=b"a,b\n1,2", headers={"Content-Type": "text/csv"}
@@ -483,7 +582,7 @@ class TestResponses:
         assert isinstance(result.data, TextResponse)
         assert result.data.text == "a,b\n1,2"
 
-    async def test_none_response(self) -> None:
+    async def test_none_response(self, monkeypatch: pytest.MonkeyPatch) -> None:
         op = Operation(
             operation_id="testNone",
             resource="tests",
@@ -499,6 +598,7 @@ class TestResponses:
                 replacement=ReplacementSemantics.NOT_APPLICABLE,
             ),
         )
+        monkeypatch.setitem(BY_ID, op.operation_id, op)
         executor = make_executor(lambda request: httpx.Response(204))
         result = await executor.execute(op, path_args={"workspaceId": "w"})
         assert result.data is None
@@ -513,7 +613,11 @@ class TestResponses:
         ],
     )
     async def test_content_negotiated(
-        self, content_type: str, content: bytes, expected_type: type
+        self,
+        content_type: str,
+        content: bytes,
+        expected_type: type,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         op = Operation(
             operation_id="testNegotiated",
@@ -525,6 +629,7 @@ class TestResponses:
             path_parameters=("id",),
             response_kind=ResponseKind.CONTENT_NEGOTIATED,
         )
+        monkeypatch.setitem(BY_ID, op.operation_id, op)
         executor = make_executor(
             lambda request: httpx.Response(
                 200, content=content, headers={"Content-Type": content_type}
@@ -586,6 +691,8 @@ class TestErrors:
                     json={
                         "message": f"safe prefix {secret} safe suffix",
                         "nested": {"X-Api-Key": secret},
+                        secret: "configured secret used as a key",
+                        "refreshToken": secret,
                         "items": ["safe", {"token": secret}],
                         "code": "SAFE_CODE",
                     },
@@ -608,6 +715,8 @@ class TestErrors:
         assert "safe prefix" in str(error)
         if response_kind == "json":
             assert error.api_code == "SAFE_CODE"
+            assert error.body["<redacted-key-1>"] == "<redacted>"
+            assert error.body["<redacted-key-2>"] == "<redacted>"
 
     async def test_large_json_error_is_bounded_and_keeps_safe_diagnostics(self) -> None:
         executor = make_executor(
@@ -624,7 +733,7 @@ class TestErrors:
                 headers={"X-Request-Id": "caller-rid"},
             )
         error = info.value
-        assert len(str(error)) <= 800
+        assert len(str(error)) <= 500
         assert len(repr(error.body)) <= 5000
         assert error.operation_id == "testRead"
         assert error.status_code == 429
@@ -773,6 +882,19 @@ class TestTransportFailures:
         with pytest.raises(MutationOutcomeUnknownError):
             await executor.execute(JSON_WRITE, path_args={"workspaceId": "w"}, body={})
 
+    async def test_read_transport_error_is_redacted_and_bounded(self) -> None:
+        secret = "configured-secret"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ReadError(f"{secret} " + "x" * 5000)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        executor = HttpExecutor(client=client, credential=Credential(api_key=secret))
+        with pytest.raises(ClockifyTransportError) as info:
+            await executor.execute(GET_READ, path_args={"workspaceId": "w"})
+        assert secret not in str(info.value)
+        assert len(str(info.value)) <= 500
+
     async def test_cancellation_propagates(self) -> None:
         started = asyncio.Event()
 
@@ -787,6 +909,67 @@ class TestTransportFailures:
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+
+    async def test_in_flight_write_cancellation_is_outcome_unknown(self) -> None:
+        started = asyncio.Event()
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            started.set()
+            await asyncio.sleep(30)
+            return httpx.Response(200, json={})
+
+        executor = make_executor(handler)
+        task = asyncio.create_task(
+            executor.execute(JSON_WRITE, path_args={"workspaceId": "w"}, body={})
+        )
+        await started.wait()
+        task.cancel()
+        with pytest.raises(MutationOutcomeUnknownError):
+            await task
+
+
+class TestTimeouts:
+    async def test_client_default_timeout_is_preserved(self) -> None:
+        seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(200, json=[])
+
+        client = httpx.AsyncClient(
+            transport=httpx.MockTransport(handler), timeout=httpx.Timeout(123.0)
+        )
+        executor = HttpExecutor(client=client, credential=Credential(api_key="test-key"))
+        await executor.execute(GET_READ, path_args={"workspaceId": "w"})
+        assert seen[0].extensions["timeout"] == {
+            "connect": 123.0,
+            "read": 123.0,
+            "write": 123.0,
+            "pool": 123.0,
+        }
+
+    async def test_per_call_timeout_overrides_client_default(self) -> None:
+        seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(200, json=[])
+
+        client = httpx.AsyncClient(
+            transport=httpx.MockTransport(handler), timeout=httpx.Timeout(123.0)
+        )
+        executor = HttpExecutor(client=client, credential=Credential(api_key="test-key"))
+        await executor.execute(
+            GET_READ,
+            path_args={"workspaceId": "w"},
+            timeout=httpx.Timeout(7.0),
+        )
+        assert seen[0].extensions["timeout"] == {
+            "connect": 7.0,
+            "read": 7.0,
+            "write": 7.0,
+            "pool": 7.0,
+        }
 
 
 class TestReadOnlyExecutor:
@@ -810,3 +993,41 @@ class TestReadOnlyExecutor:
         executor = ReadOnlyExecutor(make_executor(handler))
         with pytest.raises(ClockifyReadOnlyViolation):
             await executor.execute(GET_WRITE_TRAP, path_args={"workspaceId": "w"})
+
+    async def test_forged_registered_operation_is_rejected(self) -> None:
+        forged_write = replace(JSON_WRITE, semantics=READ_SEMANTICS)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise AssertionError("forged operation must not reach the transport")
+
+        executor = ReadOnlyExecutor(make_executor(handler))
+        with pytest.raises(ClockifyConfigurationError, match="operation registry"):
+            await executor.execute(
+                forged_write,
+                path_args={"workspaceId": "w"},
+                body={},
+            )
+
+    async def test_compiled_write_cannot_be_dispatched_as_a_read(self) -> None:
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            return httpx.Response(200, json=[])
+
+        inner = make_executor(handler, retry_policy=ReadRetryPolicy(max_attempts=2))
+        compiled_write = inner.compile(
+            JSON_WRITE,
+            path_args={"workspaceId": "w"},
+            body={},
+        )
+        with pytest.raises(ClockifyConfigurationError, match="compiled request operation"):
+            await inner._dispatch_compiled(  # pyright: ignore[reportPrivateUsage]
+                GET_READ, compiled_write
+            )
+        assert calls == 0
+
+    def test_compiled_dispatch_is_not_exposed_by_read_only_executor(self) -> None:
+        executor = ReadOnlyExecutor(make_executor(lambda request: httpx.Response(200, json=[])))
+        assert not hasattr(executor, "dispatch_compiled")

@@ -60,6 +60,7 @@ class QueryParameter:
     wire_name: str
     style: str = "form"
     explode: bool = True
+    required: bool = False
 
 
 @dataclass(frozen=True, slots=True)

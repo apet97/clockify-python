@@ -26,9 +26,15 @@ def validate_destination(
         )
     parsed = httpx.URL(url)
     parsed_base = httpx.URL(base)
-    if parsed.scheme != parsed_base.scheme:
-        raise ClockifyConfigurationError(f"destination scheme mismatch: {parsed.scheme!r}")
+    if parsed.scheme != "https" or parsed_base.scheme != "https":
+        raise ClockifyConfigurationError("Clockify service URLs must use HTTPS")
+    if parsed.userinfo or parsed_base.userinfo:
+        raise ClockifyConfigurationError("Clockify service URLs must not contain user information")
     if parsed.host != parsed_base.host or parsed.port != parsed_base.port:
         raise ClockifyConfigurationError(f"destination host mismatch: {parsed.host!r}")
-    if not parsed.path.startswith(parsed_base.path):
+    base_path = parsed_base.path.rstrip("/") or "/"
+    path_is_inside_base = (
+        base_path == "/" or parsed.path == base_path or parsed.path.startswith(base_path + "/")
+    )
+    if not path_is_inside_base:
         raise ClockifyConfigurationError(f"destination path escapes service base: {parsed.path!r}")

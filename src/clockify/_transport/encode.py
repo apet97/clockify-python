@@ -20,6 +20,7 @@ MultipartFile = tuple[str, tuple[str, "bytes | BinaryIO", str]]
 
 @dataclass(frozen=True, slots=True)
 class CompiledRequest:
+    operation_id: str
     method: str
     url: str
     params: tuple[tuple[str, str], ...] = ()
@@ -75,8 +76,18 @@ def serialize_query(operation: Operation, query: dict[str, Any]) -> tuple[tuple[
     for parameter in operation.query_parameters:
         value = query.get(parameter.python_name)
         if value is None:
+            if parameter.required:
+                raise ClockifyConfigurationError(
+                    f"{operation.operation_id}: missing required query parameter "
+                    f"{parameter.python_name!r}"
+                )
             continue
         if isinstance(value, (list, tuple, set, frozenset)):
+            if parameter.required and not value:
+                raise ClockifyConfigurationError(
+                    f"{operation.operation_id}: required query parameter "
+                    f"{parameter.python_name!r} must not be empty"
+                )
             items = [_scalar(v) for v in value]
             if parameter.explode:
                 pairs.extend((parameter.wire_name, item) for item in items)
@@ -165,6 +176,7 @@ def compile_request(
                 else:
                     form.append((key, _scalar(value)))
         return CompiledRequest(
+            operation_id=operation.operation_id,
             method=operation.http_method,
             url=base_url + path,
             params=params,
@@ -174,6 +186,7 @@ def compile_request(
         )
 
     return CompiledRequest(
+        operation_id=operation.operation_id,
         method=operation.http_method,
         url=base_url + path,
         params=params,

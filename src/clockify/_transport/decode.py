@@ -21,20 +21,26 @@ from clockify.operations.model import Operation, ResponseKind
 from clockify.response import BinaryResponse, TextResponse
 
 _FILENAME = re.compile(r'filename="?([^";]+)"?', re.IGNORECASE)
-_SENSITIVE_KEY = re.compile(
-    r"(?:authorization|x[-_ ]?api[-_ ]?key|x[-_ ]?addon[-_ ]?token|"
-    r"api[-_ ]?key|addon[-_ ]?token|access[-_ ]?token|password|secret|token)",
-    re.IGNORECASE,
-)
 _SENSITIVE_PAIR = re.compile(
     r"(?i)\b(authorization|x-api-key|x-addon-token|api[_ -]?key|"
-    r"addon[_ -]?token|access[_ -]?token|password|secret|token)"
+    r"addon[_ -]?token|access[_ -]?token|refresh[_ -]?token|"
+    r"client[_ -]?secret|password|secret|token)"
     r"\b\s*[:=]\s*(?:bearer\s+)?(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
 )
 _MAX_ERROR_TEXT = 500
 _MAX_BODY_BYTES = 4096
 _MAX_COLLECTION_ITEMS = 20
 _MAX_DEPTH = 4
+_SENSITIVE_HEADER_NAMES = frozenset(
+    {
+        "authorization",
+        "cookie",
+        "proxy-authorization",
+        "set-cookie",
+        "x-addon-token",
+        "x-api-key",
+    }
+)
 
 
 def request_id_of(response: httpx.Response) -> str | None:
@@ -52,12 +58,13 @@ def _decode_json(operation: Operation, response: httpx.Response) -> Any:
         return None
     try:
         return response.json()
-    except (json.JSONDecodeError, ValueError) as exc:
-        raise ClockifyResponseValidationError(
-            f"{operation.operation_id}: 2xx response body is not valid JSON",
-            operation_id=operation.operation_id,
-            request_id=request_id_of(response),
-        ) from exc
+    except (json.JSONDecodeError, ValueError):
+        pass
+    raise ClockifyResponseValidationError(
+        f"{operation.operation_id}: 2xx response body is not valid JSON",
+        operation_id=operation.operation_id,
+        request_id=request_id_of(response),
+    ) from None
 
 
 def _decode_text(response: httpx.Response) -> TextResponse:
@@ -132,8 +139,20 @@ def parse_retry_after(response: httpx.Response, *, now: datetime | None = None) 
     return value if value >= 0 else None
 
 
-def _redact_text(value: str, sensitive_values: tuple[str, ...]) -> str:
-    safe = value
+def _is_sensitive_key(value: object) -> bool:
+    normalized = re.sub(r"[^a-z0-9]", "", str(value).lower())
+    return (
+        normalized == "authorization"
+        or "apikey" in normalized
+        or "password" in normalized
+        or "secret" in normalized
+        or normalized.endswith("token")
+    )
+
+
+def sanitize_error_text(value: object, *, sensitive_values: tuple[str, ...] = ()) -> str:
+    """Redact credentials and bound one public error text value."""
+    safe = str(value)
     for secret in sensitive_values:
         if secret:
             safe = safe.replace(secret, "<redacted>")
@@ -147,21 +166,24 @@ def _sanitize_value(value: Any, sensitive_values: tuple[str, ...], *, depth: int
     if depth >= _MAX_DEPTH:
         return "<maximum depth reached>"
     if isinstance(value, str):
-        return _redact_text(value, sensitive_values)
+        return sanitize_error_text(value, sensitive_values=sensitive_values)
     if value is None or isinstance(value, (bool, int, float)):
         return value
     if isinstance(value, dict):
         result: dict[str, Any] = {}
+        redacted_key_index = 0
         for index, (key, item) in enumerate(value.items()):
             if index >= _MAX_COLLECTION_ITEMS:
                 result["<truncated>"] = f"{len(value) - _MAX_COLLECTION_ITEMS} more fields"
                 break
-            safe_key = _redact_text(str(key), ())
-            result[safe_key] = (
-                "<redacted>"
-                if _SENSITIVE_KEY.fullmatch(str(key))
-                else _sanitize_value(item, sensitive_values, depth=depth + 1)
-            )
+            key_text = str(key)
+            key_contains_secret = any(secret and secret in key_text for secret in sensitive_values)
+            if _is_sensitive_key(key) or key_contains_secret:
+                redacted_key_index += 1
+                result[f"<redacted-key-{redacted_key_index}>"] = "<redacted>"
+                continue
+            safe_key = sanitize_error_text(key, sensitive_values=sensitive_values)
+            result[safe_key] = _sanitize_value(item, sensitive_values, depth=depth + 1)
         return result
     if isinstance(value, (list, tuple)):
         items = [
@@ -171,7 +193,7 @@ def _sanitize_value(value: Any, sensitive_values: tuple[str, ...], *, depth: int
         if len(value) > _MAX_COLLECTION_ITEMS:
             items.append(f"<{len(value) - _MAX_COLLECTION_ITEMS} more items>")
         return items
-    return _redact_text(str(value), sensitive_values)
+    return sanitize_error_text(value, sensitive_values=sensitive_values)
 
 
 def _sanitize_body(value: Any, sensitive_values: tuple[str, ...]) -> Any:
@@ -189,8 +211,8 @@ def _sanitize_headers(headers: httpx.Headers, sensitive_values: tuple[str, ...])
     for name, value in headers.items():
         safe[name] = (
             "<redacted>"
-            if _SENSITIVE_KEY.fullmatch(name)
-            else _redact_text(value, sensitive_values)
+            if name.lower() in _SENSITIVE_HEADER_NAMES or _is_sensitive_key(name)
+            else sanitize_error_text(value, sensitive_values=sensitive_values)
         )
     return httpx.Headers(safe)
 
@@ -205,12 +227,13 @@ _ERROR_BY_STATUS: dict[int, type[ClockifyAPIError]] = {
 }
 
 
-def raise_api_error(
+def build_api_error(
     operation: Operation,
     response: httpx.Response,
     *,
     sensitive_values: tuple[str, ...] = (),
-) -> "None":
+) -> ClockifyAPIError:
+    """Build a sanitized API error without retaining raw response data."""
     body: Any = None
     message: str | None = None
     api_code: int | str | None = None
@@ -220,18 +243,22 @@ def raise_api_error(
         if isinstance(raw_body, dict):
             raw_message = raw_body.get("message") or raw_body.get("description")
             if raw_message is not None:
-                message = _redact_text(str(raw_message), sensitive_values)
+                message = sanitize_error_text(raw_message, sensitive_values=sensitive_values)
             raw_code = raw_body.get("code")
             if isinstance(raw_code, (int, str)):
                 api_code = _sanitize_value(raw_code, sensitive_values)
     except (json.JSONDecodeError, ValueError):
         text = response.text
-        message = _redact_text(text, sensitive_values) if text else None
+        message = sanitize_error_text(text, sensitive_values=sensitive_values) if text else None
 
     error_class = _ERROR_BY_STATUS.get(response.status_code, ClockifyAPIError)
-    raise error_class(
+    error_message = sanitize_error_text(
         f"{operation.operation_id}: HTTP {response.status_code}"
         + (f" — {message}" if message else ""),
+        sensitive_values=sensitive_values,
+    )
+    return error_class(
+        error_message,
         operation_id=operation.operation_id,
         status_code=response.status_code,
         body=body,

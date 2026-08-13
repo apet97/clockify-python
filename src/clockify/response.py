@@ -1,6 +1,6 @@
 """Response containers returned by the executor and raw escape hatch."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Generic, TypeVar
 
@@ -13,9 +13,9 @@ T = TypeVar("T")
 class ClockifyResponse(Generic[T]):
     """Decoded payload plus the transport metadata callers need for diagnosis."""
 
-    data: T
+    data: T = field(repr=False)
     status_code: int
-    headers: httpx.Headers
+    headers: httpx.Headers = field(repr=False)
     request_id: str | None
     operation_id: str
 

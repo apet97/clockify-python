@@ -94,7 +94,7 @@ TIME_ENTRIES_DELETE_ALL_FOR_USER = Operation(
     service=Service.REGULAR,
     path="/workspaces/{workspaceId}/user/{userId}/time-entries",
     path_parameters=("workspaceId", "userId"),
-    query_parameters=(QueryParameter("time_entry_ids", "time-entry-ids"),),
+    query_parameters=(QueryParameter("time_entry_ids", "time-entry-ids", required=True),),
     request_encoding=RequestEncoding.NONE,
     response_kind=ResponseKind.JSON,
     semantics=OperationSemantics(
