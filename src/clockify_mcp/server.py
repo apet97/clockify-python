@@ -5,17 +5,12 @@ protocol traffic; logs go to stderr. No write module is imported here — the
 default server is structurally read-only, not read-only-by-flag.
 """
 
-import logging
-import sys
-
 from mcp.server import MCPServer
 
 from clockify.client import ClockifyClient
 from clockify_mcp.context import ServerConfig, build_read_only_client
 from clockify_mcp.tools import register_read_tools
 from clockify_mcp.tools.workflows import register_workflows
-
-logger = logging.getLogger("clockify_mcp")
 
 
 def build_read_only_server(
@@ -39,14 +34,3 @@ def build_read_only_server(
     register_read_tools(server, client)
     register_workflows(server, client, resolved_config)
     return server
-
-
-def main() -> int:
-    logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
-    try:
-        server = build_read_only_server()
-    except Exception as exc:  # configuration errors must not corrupt stdout
-        print(f"clockify-mcp: {exc}", file=sys.stderr)
-        return 1
-    server.run(transport="stdio")
-    return 0

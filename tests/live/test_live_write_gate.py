@@ -17,7 +17,7 @@ from mcp.types import ElicitResult
 
 from clockify import ClockifyClient
 from clockify_mcp.context import ServerConfig
-from clockify_mcp.writes.adapters import build_approved_server
+from clockify_mcp.full_server import build_full_server
 from mcp import Client
 
 pytestmark = pytest.mark.live
@@ -37,7 +37,7 @@ async def test_gated_tag_create_live_zero_residue() -> None:
 
     name = f"py115-gate-{uuid.uuid4().hex[:8]}"
     config = ServerConfig(api_key=api_key, addon_token=None, workspace_id=workspace_id)
-    server = build_approved_server(config)
+    server = build_full_server(config)
     previews: list[str] = []
 
     async def approve(context: Any, params: Any) -> ElicitResult:

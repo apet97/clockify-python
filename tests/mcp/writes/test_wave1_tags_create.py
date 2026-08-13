@@ -9,7 +9,7 @@ import httpx
 from mcp.types import ElicitResult
 
 from clockify_mcp.context import ServerConfig
-from clockify_mcp.writes.adapters import build_approved_server
+from clockify_mcp.full_server import build_full_server
 from clockify_mcp.writes.gate import WriteGate
 from mcp import Client
 
@@ -40,7 +40,7 @@ class WriteBackend(MockBackend):
 
 
 def make_server(backend: WriteBackend):  # type: ignore[no-untyped-def]
-    return build_approved_server(
+    return build_full_server(
         CONFIG,
         read_client=make_mock_client(backend),
         write_http_client=httpx.AsyncClient(transport=httpx.MockTransport(backend.handler)),
@@ -204,7 +204,7 @@ async def test_malformed_consumed_plan_never_dispatches(monkeypatch) -> None:  #
     assert payload["state"] == "failed_before_dispatch"
     assert payload["applied_steps"] == []
     assert payload["failed_step"] is None
-    assert "invalid tag request" in payload["warnings"][0]
+    assert "failed revalidation; no write was sent" in payload["warnings"][0]
     assert backend.mutations == []
 
 

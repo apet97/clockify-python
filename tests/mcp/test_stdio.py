@@ -9,19 +9,39 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp import ClientSession
 
 
-async def test_stdio_lists_and_calls_a_tool() -> None:
+def _clean_env(**overrides: str) -> dict[str, str]:
     env = {
         **os.environ,
         "CLOCKIFY_API_KEY": "stdio-test-key",
         "CLOCKIFY_WORKSPACE_ID": "w-stdio",
+        **overrides,
     }
     env.pop("CLOCKIFY_ADDON_TOKEN", None)
+    env.pop("CLOCKIFY_MCP_READ_ONLY", None)
+    return {**env, **overrides}
+
+
+async def test_stdio_read_only_flag_serves_exactly_65_tools() -> None:
+    env = _clean_env(CLOCKIFY_MCP_READ_ONLY="true")
     params = StdioServerParameters(command=sys.executable, args=["-m", "clockify_mcp"], env=env)
     async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
         await session.initialize()
         tools = await session.list_tools()
         names = {tool.name for tool in tools.tools}
         assert len(names) == 65
+        assert "clockify_tags_create" not in names
+
+
+async def test_stdio_lists_and_calls_a_tool() -> None:
+    env = _clean_env()
+    params = StdioServerParameters(command=sys.executable, args=["-m", "clockify_mcp"], env=env)
+    async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
+        await session.initialize()
+        tools = await session.list_tools()
+        names = {tool.name for tool in tools.tools}
+        from clockify_mcp.risk import RISK_BY_TOOL
+
+        assert names == set(RISK_BY_TOOL)
         assert "clockify_tags_list" in names
         assert "clockify_doctor" in names
         # A tool that fails before network still answers over the protocol
